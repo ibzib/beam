@@ -1559,6 +1559,9 @@ class BeamModulePlugin implements Plugin<Project> {
         group = "Verification"
         description = "Validates the PortableRunner with JobServer ${config.jobServerDriver}"
         systemProperty "beamTestPipelineOptions", JsonOutput.toJson(beamTestPipelineOptions)
+        systemProperty "beam.spark.test.reuseSparkContext", "true"
+        systemProperty "spark.ui.enabled", "false"
+        systemProperty "spark.ui.showConsoleProgress", "false"
         classpath = config.testClasspathConfiguration
         testClassesDirs = project.files(project.project(":beam-sdks-java-core").sourceSets.test.output.classesDirs, project.project(":beam-runners-core-java").sourceSets.test.output.classesDirs)
         maxParallelForks config.numParallelTests
