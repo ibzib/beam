@@ -31,6 +31,7 @@ import org.apache.beam.model.pipeline.v1.RunnerApi.ExecutableStagePayload.SideIn
 import org.apache.beam.model.pipeline.v1.RunnerApi.PCollection;
 import org.apache.beam.runners.core.SystemReduceFn;
 import org.apache.beam.runners.core.construction.PTransformTranslation;
+import org.apache.beam.runners.core.construction.ReadTranslation;
 import org.apache.beam.runners.core.construction.graph.ExecutableStage;
 import org.apache.beam.runners.core.construction.graph.PipelineNode;
 import org.apache.beam.runners.core.construction.graph.PipelineNode.PCollectionNode;
@@ -39,10 +40,12 @@ import org.apache.beam.runners.core.construction.graph.QueryablePipeline;
 import org.apache.beam.runners.fnexecution.wire.WireCoders;
 import org.apache.beam.runners.spark.SparkPipelineOptions;
 import org.apache.beam.runners.spark.aggregators.AggregatorsAccumulator;
+import org.apache.beam.runners.spark.io.SourceRDD;
 import org.apache.beam.runners.spark.metrics.MetricsAccumulator;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.transforms.join.RawUnionValue;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.TimestampCombiner;
@@ -57,6 +60,7 @@ import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.Iterables;
 import org.apache.spark.HashPartitioner;
 import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import scala.Tuple2;
 
@@ -86,6 +90,8 @@ public class SparkBatchPortablePipelineTranslator {
         SparkBatchPortablePipelineTranslator::translateGroupByKey);
     translatorMap.put(
         ExecutableStage.URN, SparkBatchPortablePipelineTranslator::translateExecutableStage);
+    translatorMap.put(
+        PTransformTranslation.READ_TRANSFORM_URN, SparkBatchPortablePipelineTranslator::translateRead);
     this.urnToTransformTranslator = translatorMap.build();
   }
 
@@ -235,6 +241,29 @@ public class SparkBatchPortablePipelineTranslator {
     List<byte[]> bytes = dataset.getBytes(coder);
     Broadcast<List<byte[]>> broadcast = context.getSparkContext().broadcast(bytes);
     return new Tuple2<>(broadcast, coder);
+  }
+
+  private static <T> void translateRead(
+      PTransformNode transformNode, RunnerApi.Pipeline pipeline, SparkTranslationContext context) {
+    String stepName = transformNode.getTransform().getUniqueName();
+    final JavaSparkContext jsc = context.getSparkContext();
+
+    BoundedSource boundedSource;
+    try {
+      boundedSource =
+          ReadTranslation.boundedSourceFromProto(
+              RunnerApi.ReadPayload.parseFrom(transformNode.getTransform().getSpec().getPayload()));
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to extract BoundedSource from ReadPayload.", e);
+    }
+
+    // create an RDD from a BoundedSource.
+    JavaRDD<WindowedValue<T>> input =
+        new SourceRDD.Bounded<>(
+                jsc.sc(), boundedSource, context.serializablePipelineOptions, stepName)
+            .toJavaRDD();
+
+    context.pushDataset(getOutputId(transformNode), new BoundedDataset<>(input));
   }
 
   @Nullable
