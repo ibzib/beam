@@ -34,6 +34,8 @@ import org.apache.beam.model.pipeline.v1.RunnerApi;
 import org.apache.beam.model.pipeline.v1.RunnerApi.Components;
 import org.apache.beam.model.pipeline.v1.RunnerApi.ExecutableStagePayload;
 import org.apache.beam.model.pipeline.v1.RunnerApi.PCollection;
+import org.apache.beam.runners.core.metrics.MetricsContainerImpl;
+import org.apache.beam.runners.core.metrics.MetricsContainerStepMap;
 import org.apache.beam.runners.fnexecution.control.BundleProgressHandler;
 import org.apache.beam.runners.fnexecution.control.JobBundleFactory;
 import org.apache.beam.runners.fnexecution.control.OutputReceiverFactory;
@@ -48,6 +50,7 @@ import org.apache.beam.sdk.transforms.join.RawUnionValue;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.vendor.grpc.v1p13p1.com.google.protobuf.Struct;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableMap;
+import org.apache.spark.Accumulator;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -60,6 +63,9 @@ public class SparkExecutableStageFunctionTest {
   @Mock private JobBundleFactory jobBundleFactory;
   @Mock private StageBundleFactory stageBundleFactory;
   @Mock private RemoteBundle remoteBundle;
+  @Mock private Accumulator<MetricsContainerStepMap> metricsAccumulator;
+  @Mock private MetricsContainerStepMap stepMap;
+  @Mock private MetricsContainerImpl container;
 
   private final String INPUT_ID = "input-id";
   private final ExecutableStagePayload stagePayload =
@@ -89,6 +95,8 @@ public class SparkExecutableStageFunctionTest {
     ImmutableMap<String, FnDataReceiver<WindowedValue<?>>> inputReceiver =
         ImmutableMap.of("input", Mockito.mock(FnDataReceiver.class));
     when(remoteBundle.getInputReceivers()).thenReturn(inputReceiver);
+    when(metricsAccumulator.localValue()).thenReturn(stepMap);
+    when(stepMap.getContainer(any())).thenReturn(container);
   }
 
   @Test(expected = Exception.class)
@@ -205,6 +213,10 @@ public class SparkExecutableStageFunctionTest {
   private <InputT, SideInputT> SparkExecutableStageFunction<InputT, SideInputT> getFunction(
       Map<String, Integer> outputMap) {
     return new SparkExecutableStageFunction<>(
-        stagePayload, outputMap, jobBundleFactoryCreator, Collections.emptyMap());
+        stagePayload,
+        outputMap,
+        jobBundleFactoryCreator,
+        Collections.emptyMap(),
+        metricsAccumulator);
   }
 }
