@@ -67,7 +67,7 @@ import org.apache.spark.broadcast.Broadcast;
 import scala.Tuple2;
 
 /** Translates a bounded portable pipeline into a Spark job. */
-public class SparkBatchPortablePipelineTranslator {
+public class SparkBatchPortablePipelineTranslator implements SparkPortablePipelineTranslator {
 
   private ImmutableMap<String, PTransformTranslator> urnToTransformTranslator;
 
@@ -78,6 +78,7 @@ public class SparkBatchPortablePipelineTranslator {
         PTransformNode transformNode, RunnerApi.Pipeline pipeline, SparkTranslationContext context);
   }
 
+  @Override
   public Set<String> knownUrns() {
     return urnToTransformTranslator.keySet();
   }
@@ -101,7 +102,7 @@ public class SparkBatchPortablePipelineTranslator {
     this.urnToTransformTranslator = translatorMap.build();
   }
 
-  /** Translates pipeline from Beam into the Spark context. */
+  @Override
   public void translate(final RunnerApi.Pipeline pipeline, SparkTranslationContext context) {
     QueryablePipeline p =
         QueryablePipeline.forTransforms(

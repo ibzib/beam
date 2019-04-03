@@ -17,6 +17,10 @@
  */
 package org.apache.beam.runners.spark;
 
+import static org.apache.beam.runners.fnexecution.translation.PipelineTranslatorUtils.hasUnboundedPCollections;
+
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -31,6 +35,7 @@ import org.apache.beam.runners.spark.aggregators.AggregatorsAccumulator;
 import org.apache.beam.runners.spark.metrics.MetricsAccumulator;
 import org.apache.beam.runners.spark.translation.SparkBatchPortablePipelineTranslator;
 import org.apache.beam.runners.spark.translation.SparkContextFactory;
+import org.apache.beam.runners.spark.translation.SparkPortablePipelineTranslator;
 import org.apache.beam.runners.spark.translation.SparkTranslationContext;
 import org.apache.beam.sdk.metrics.MetricsEnvironment;
 import org.apache.beam.sdk.metrics.MetricsOptions;
@@ -51,7 +56,24 @@ public class SparkPipelineRunner implements PortablePipelineRunner {
 
   @Override
   public SparkPipelineResult run(RunnerApi.Pipeline pipeline, JobInfo jobInfo) {
-    SparkBatchPortablePipelineTranslator translator = new SparkBatchPortablePipelineTranslator();
+    SparkPortablePipelineTranslator translator;
+    if (hasUnboundedPCollections(pipeline)) {
+      translator =
+          new SparkPortablePipelineTranslator() {
+            @Override
+            public void translate(Pipeline pipeline, SparkTranslationContext context) {
+              throw new UnsupportedOperationException(
+                  "Spark runner does not yet support portable streaming pipelines.");
+            }
+
+            @Override
+            public Set<String> knownUrns() {
+              return Collections.emptySet();
+            }
+          };
+    } else {
+      translator = new SparkBatchPortablePipelineTranslator();
+    }
 
     // Don't let the fuser fuse any subcomponents of native transforms.
     Pipeline trimmedPipeline = PipelineTrimmer.trim(pipeline, translator.knownUrns());
