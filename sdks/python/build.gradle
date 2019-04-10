@@ -224,6 +224,7 @@ def portableWordCountTask(name, streaming) {
               "--experiments=worker_threads=100",
               "--parallelism=2",
               "--shutdown_sources_on_final_watermark",
+              "--environment_type=LOOPBACK",
       ]
       if (streaming)
         options += ["--streaming"]
