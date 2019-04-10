@@ -49,12 +49,12 @@ configurations.all {
 
 dependencies {
   compile project(path: sparkRunnerProject, configuration: "shadow")
+  compile project(path: sparkRunnerProject, configuration: "provided")
   compile group: "org.slf4j", name: "jcl-over-slf4j", version: dependencies.create(project.library.java.slf4j_api).getVersion()
   validatesPortableRunner project(path: sparkRunnerProject, configuration: "shadowTest")
   validatesPortableRunner project(path: ":beam-sdks-java-core", configuration: "shadowTest")
   validatesPortableRunner project(path: ":beam-runners-core-java", configuration: "shadowTest")
   validatesPortableRunner project(path: ":beam-runners-reference-java", configuration: "shadowTest")
-  validatesPortableRunner project(path: sparkRunnerProject, configuration: "provided")
   compile project(path: ":beam-sdks-java-extensions-google-cloud-platform-core", configuration: "shadow")
   compile library.java.slf4j_simple
 //  TODO: Enable AWS and HDFS file system.
