@@ -24,6 +24,7 @@ import org.apache.beam.runners.core.construction.PipelineOptionsTranslation;
 import org.apache.beam.runners.fnexecution.jobsubmission.JobInvocation;
 import org.apache.beam.runners.fnexecution.jobsubmission.JobInvoker;
 import org.apache.beam.runners.fnexecution.provisioning.JobInfo;
+import org.apache.beam.sdk.options.ApplicationNameOptions;
 import org.apache.beam.vendor.grpc.v1p13p1.com.google.protobuf.Struct;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
@@ -55,6 +56,14 @@ public class SparkJobInvoker extends JobInvoker {
     String invocationId =
         String.format("%s_%s", sparkOptions.getJobName(), UUID.randomUUID().toString());
     LOG.info("Invoking job {}", invocationId);
+
+    // Options can't be translated to proto if runner class is unresolvable, so set it to null.
+    sparkOptions.setRunner(null);
+
+    if (sparkOptions.getAppName() == null) {
+      LOG.debug("App name was null. Using invocationId {}", invocationId);
+      sparkOptions.setAppName(invocationId);
+    }
 
     return createJobInvocation(
         invocationId, retrievalToken, executorService, pipeline, sparkOptions);
