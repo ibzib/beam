@@ -276,19 +276,6 @@ public final class SparkRunner extends PipelineRunner<SparkPipelineResult> {
     }
   }
 
-  /**
-   * Local configurations work in the same JVM and have no problems with improperly formatted files
-   * on classpath (eg. directories with .class files or empty directories). Prepare files for
-   * staging only when using remote cluster (passing the master address explicitly).
-   */
-  private static void prepareFilesToStageForRemoteClusterExecution(SparkPipelineOptions options) {
-    if (!options.getSparkMaster().matches("local\\[?\\d*]?")) {
-      options.setFilesToStage(
-          PipelineResources.prepareFilesForStaging(
-              options.getFilesToStage(), options.getTempLocation()));
-    }
-  }
-
   /** Evaluator that update/populate the cache candidates. */
   public static void updateCacheCandidates(
       Pipeline pipeline, SparkPipelineTranslator translator, EvaluationContext evaluationContext) {
