@@ -41,3 +41,18 @@ golang {
     continueOnFailure = true
   }
 }
+
+task flinkValidatesRunner {
+  doLast {
+    def options = [
+      "--runner flink",
+      "--parallel 1", // prevent OOM
+    ]
+    exec {
+      executable "sh"
+      args "-c", "./test/run_integration_tests.sh ${options.join(' ')}"
+    }
+  }
+  dependsOn ":beam-sdks-go-test:build"
+  dependsOn ":beam-runners-flink_2.11-job-server-container:docker"
+}
