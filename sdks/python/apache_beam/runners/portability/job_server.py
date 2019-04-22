@@ -16,6 +16,7 @@
 #
 
 from __future__ import absolute_import
+from __future__ import print_function
 
 import atexit
 import logging
@@ -137,3 +138,21 @@ class DockerizedJobServer(object):
     for s in sockets:
       s.close()
     return ports
+
+
+if __name__ == '__main__':
+  docker = DockerizedJobServer()
+  endpoint = docker.start()
+  print(endpoint)
+  stopped = False
+
+  def handler(signum, frame):
+    docker.stop()
+    global stopped
+    stopped = True
+
+  signal.signal(signal.SIGINT, handler)
+  signal.signal(signal.SIGTERM, handler)
+
+  while not stopped:
+    time.sleep(1)

@@ -37,10 +37,6 @@ GCS_LOCATION=gs://temp-storage-for-end-to-end-tests
 PROJECT=apache-beam-testing
 DATAFLOW_PROJECT=apache-beam-testing
 
-# Job endpoint for portable runners
-# TODO(ibzib) use a dynamically assigned port by default
-ENDPOINT=localhost:8099
-
 # Number of tests to run in parallel
 PARALLEL=10
 

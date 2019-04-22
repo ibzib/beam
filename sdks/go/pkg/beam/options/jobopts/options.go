@@ -32,7 +32,7 @@ import (
 
 var (
 	// Endpoint is the job service endpoint.
-	Endpoint = flag.String("endpoint", "", "Job service endpoint (required).")
+	Endpoint = flag.String("endpoint", "", "Job service endpoint (optional).")
 
 	// JobName is the name of the job.
 	JobName = flag.String("job_name", "", "Job name (optional).")
@@ -61,15 +61,6 @@ var (
 	// Async determines whether to wait for job completion.
 	Async = flag.Bool("async", false, "Do not wait for job completion.")
 )
-
-// GetEndpoint returns the endpoint, if non empty and exits otherwise. Runners
-// such as Dataflow set a reasonable default. Convenience function.
-func GetEndpoint() (string, error) {
-	if *Endpoint == "" {
-		return "", fmt.Errorf("no job service endpoint specified. Use --endpoint=<endpoint>")
-	}
-	return *Endpoint, nil
-}
 
 var unique int32
 

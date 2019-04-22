@@ -39,9 +39,11 @@ func init() {
 
 // Execute executes the pipeline on a universal beam runner.
 func Execute(ctx context.Context, p *beam.Pipeline) error {
-	endpoint, err := jobopts.GetEndpoint()
-	if err != nil {
-		return err
+	var endpoint string
+	endpoint = ""
+	if endpoint == "" {
+		// TODO(ibzib) make docker container by default
+		return fmt.Errorf("no endpoint specified ya doofus")
 	}
 
 	edges, _, err := p.Build()
