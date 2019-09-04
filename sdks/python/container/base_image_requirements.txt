@@ -25,7 +25,6 @@
 
 avro==1.8.2;python_version<="2.7"
 avro-python3==1.8.2;python_version>="3.4"
-collapsing-thread-pool-executor>="2018.6"
 fastavro==0.21.24
 crcmod==1.7
 dill==0.2.9

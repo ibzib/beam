@@ -104,7 +104,7 @@ else:
 REQUIRED_PACKAGES = [
     'avro>=1.8.1,<2.0.0; python_version < "3.0"',
     'avro-python3>=1.8.1,<2.0.0; python_version >= "3.0"',
-    'collapsing-thread-pool-executor>="2018.6"',
+    'collapsing-thread-pool-executor>=2018.6,<2019',
     'crcmod>=1.7,<2.0',
     'dill>=0.2.9,<0.4.0',
     'fastavro>=0.21.4,<0.22',
