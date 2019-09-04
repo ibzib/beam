@@ -23,9 +23,9 @@ from __future__ import print_function
 import logging
 import unittest
 from builtins import range
-from concurrent import futures
 
 import grpc
+from collapsing_thread_pool_executor import CollapsingThreadPoolExecutor
 
 from apache_beam.portability.api import beam_fn_api_pb2
 from apache_beam.portability.api import beam_fn_api_pb2_grpc
@@ -93,7 +93,7 @@ class SdkWorkerTest(unittest.TestCase):
 
       test_controller = BeamFnControlServicer(requests)
 
-      server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+      server = grpc.server(CollapsingThreadPoolExecutor(max_workers=10))
       beam_fn_api_pb2_grpc.add_BeamFnControlServicer_to_server(
           test_controller, server)
       test_port = server.add_insecure_port("[::]:0")

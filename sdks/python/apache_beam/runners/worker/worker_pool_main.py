@@ -35,9 +35,9 @@ import subprocess
 import sys
 import threading
 import time
-from concurrent import futures
 
 import grpc
+from collapsing_thread_pool_executor import CollapsingThreadPoolExecutor
 
 from apache_beam.portability.api import beam_fn_api_pb2
 from apache_beam.portability.api import beam_fn_api_pb2_grpc
@@ -57,7 +57,7 @@ class BeamFnExternalWorkerPoolServicer(
   @classmethod
   def start(cls, worker_threads=1, use_process=False, port=0,
             container_executable=None):
-    worker_server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    worker_server = grpc.server(CollapsingThreadPoolExecutor(max_workers=10))
     worker_address = 'localhost:%s' % worker_server.add_insecure_port(
         '[::]:%s' % port)
     worker_pool = cls(worker_threads, use_process=use_process,

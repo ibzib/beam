@@ -17,12 +17,12 @@
 from __future__ import absolute_import
 
 import argparse
-import concurrent.futures as futures
 import logging
 import signal
 import sys
 
 import grpc
+from collapsing_thread_pool_executor import CollapsingThreadPoolExecutor
 
 import apache_beam as beam
 import apache_beam.transforms.combiners as combine
@@ -163,7 +163,7 @@ def main(unused_argv):
                       help='port on which to serve the job api')
   options = parser.parse_args()
   global server
-  server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
+  server = grpc.server(CollapsingThreadPoolExecutor(max_workers=2))
   beam_expansion_api_pb2_grpc.add_ExpansionServiceServicer_to_server(
       expansion_service.ExpansionServiceServicer(PipelineOptions()), server
   )

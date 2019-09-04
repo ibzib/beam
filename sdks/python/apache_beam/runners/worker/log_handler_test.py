@@ -20,9 +20,9 @@ from __future__ import absolute_import
 import logging
 import unittest
 from builtins import range
-from concurrent import futures
 
 import grpc
+from collapsing_thread_pool_executor import CollapsingThreadPoolExecutor
 
 from apache_beam.portability.api import beam_fn_api_pb2
 from apache_beam.portability.api import beam_fn_api_pb2_grpc
@@ -47,7 +47,7 @@ class FnApiLogRecordHandlerTest(unittest.TestCase):
 
   def setUp(self):
     self.test_logging_service = BeamFnLoggingServicer()
-    self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    self.server = grpc.server(CollapsingThreadPoolExecutor(max_workers=10))
     beam_fn_api_pb2_grpc.add_BeamFnLoggingServicer_to_server(
         self.test_logging_service, self.server)
     self.test_port = self.server.add_insecure_port('[::]:0')

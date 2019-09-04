@@ -25,9 +25,9 @@ import shutil
 import tempfile
 import time
 import unittest
-from concurrent import futures
 
 import grpc
+from collapsing_thread_pool_executor import CollapsingThreadPoolExecutor
 
 from apache_beam.portability.api import beam_artifact_api_pb2
 from apache_beam.portability.api import beam_artifact_api_pb2_grpc
@@ -72,7 +72,7 @@ class BeamFilesystemArtifactServiceTest(unittest.TestCase):
     self._run_staging(self._service, self._service)
 
   def test_with_grpc(self):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
+    server = grpc.server(CollapsingThreadPoolExecutor(max_workers=2))
     try:
       beam_artifact_api_pb2_grpc.add_ArtifactStagingServiceServicer_to_server(
           self._service, server)
@@ -197,7 +197,7 @@ class BeamFilesystemArtifactServiceTest(unittest.TestCase):
               self._service, tokens[session(index)], name(index)))
 
     # pylint: disable=range-builtin-not-iterating
-    pool = futures.ThreadPoolExecutor(max_workers=10)
+    pool = CollapsingThreadPoolExecutor(max_workers=10)
     sessions = set(pool.map(put, range(100)))
     tokens = dict(pool.map(commit, sessions))
     # List forces materialization.

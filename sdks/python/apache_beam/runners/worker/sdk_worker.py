@@ -31,9 +31,9 @@ import time
 import traceback
 from builtins import object
 from builtins import range
-from concurrent import futures
 
 import grpc
+from collapsing_thread_pool_executor import CollapsingThreadPoolExecutor
 from future.utils import raise_
 from future.utils import with_metaclass
 
@@ -89,9 +89,9 @@ class SdkHarness(object):
     # Progress report generation should not do IO or wait on other resources.
     #  Without wait, having multiple threads will not improve performance and
     #  will only add complexity.
-    self._progress_thread_pool = futures.ThreadPoolExecutor(max_workers=1)
+    self._progress_thread_pool = CollapsingThreadPoolExecutor(max_workers=1)
     # finalize and process share one thread pool.
-    self._process_thread_pool = futures.ThreadPoolExecutor(
+    self._process_thread_pool = CollapsingThreadPoolExecutor(
         max_workers=self._worker_count)
     self._responses = queue.Queue()
     self._process_bundle_queue = queue.Queue()
@@ -197,7 +197,7 @@ class SdkHarness(object):
     self._unscheduled_process_bundle[request.instruction_id] = time.time()
     self._process_thread_pool.submit(task)
     logging.debug(
-        "Currently using %s threads." % len(self._process_thread_pool._threads))
+        "Currently using %s threads." % len(self._process_thread_pool._workers))
 
   def _request_process_bundle_split(self, request):
     self._request_process_bundle_action(request)

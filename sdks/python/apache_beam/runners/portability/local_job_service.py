@@ -27,9 +27,9 @@ import time
 import traceback
 import uuid
 from builtins import object
-from concurrent import futures
 
 import grpc
+from collapsing_thread_pool_executor import CollapsingThreadPoolExecutor
 from google.protobuf import text_format
 
 from apache_beam.portability.api import beam_artifact_api_pb2
@@ -73,7 +73,7 @@ class LocalJobServicer(beam_job_api_pb2_grpc.JobServiceServicer):
     self._artifact_staging_endpoint = None
 
   def start_grpc_server(self, port=0):
-    self._server = grpc.server(futures.ThreadPoolExecutor(max_workers=3))
+    self._server = grpc.server(CollapsingThreadPoolExecutor(max_workers=3))
     port = self._server.add_insecure_port('localhost:%d' % port)
     beam_job_api_pb2_grpc.add_JobServiceServicer_to_server(self, self._server)
     beam_artifact_api_pb2_grpc.add_ArtifactStagingServiceServicer_to_server(
@@ -183,7 +183,7 @@ class SubprocessSdkWorker(object):
     self._worker_id = worker_id
 
   def run(self):
-    logging_server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    logging_server = grpc.server(CollapsingThreadPoolExecutor(max_workers=10))
     logging_port = logging_server.add_insecure_port('[::]:0')
     logging_server.start()
     logging_servicer = BeamFnLoggingServicer()

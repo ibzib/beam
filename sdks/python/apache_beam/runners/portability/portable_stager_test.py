@@ -27,9 +27,9 @@ import shutil
 import string
 import tempfile
 import unittest
-from concurrent import futures
 
 import grpc
+from collapsing_thread_pool_executor import CollapsingThreadPoolExecutor
 
 from apache_beam.portability.api import beam_artifact_api_pb2
 from apache_beam.portability.api import beam_artifact_api_pb2_grpc
@@ -56,7 +56,7 @@ class PortableStagerTest(unittest.TestCase):
           describing the name of the artifacts in local temp folder and desired
           name in staging location.
     """
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(CollapsingThreadPoolExecutor(max_workers=10))
     staging_service = TestLocalFileSystemArtifactStagingServiceServicer(
         self._remote_dir)
     beam_artifact_api_pb2_grpc.add_ArtifactStagingServiceServicer_to_server(
