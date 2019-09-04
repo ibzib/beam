@@ -57,7 +57,7 @@ class BeamFnExternalWorkerPoolServicer(
   @classmethod
   def start(cls, worker_threads=1, use_process=False, port=0,
             container_executable=None):
-    worker_server = grpc.server(CollapsingThreadPoolExecutor(max_workers=10))
+    worker_server = grpc.server(CollapsingThreadPoolExecutor())
     worker_address = 'localhost:%s' % worker_server.add_insecure_port(
         '[::]:%s' % port)
     worker_pool = cls(worker_threads, use_process=use_process,

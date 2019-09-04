@@ -47,7 +47,7 @@ class FnApiLogRecordHandlerTest(unittest.TestCase):
 
   def setUp(self):
     self.test_logging_service = BeamFnLoggingServicer()
-    self.server = grpc.server(CollapsingThreadPoolExecutor(max_workers=10))
+    self.server = grpc.server(CollapsingThreadPoolExecutor())
     beam_fn_api_pb2_grpc.add_BeamFnLoggingServicer_to_server(
         self.test_logging_service, self.server)
     self.test_port = self.server.add_insecure_port('[::]:0')

@@ -163,7 +163,7 @@ def main(unused_argv):
                       help='port on which to serve the job api')
   options = parser.parse_args()
   global server
-  server = grpc.server(CollapsingThreadPoolExecutor(max_workers=2))
+  server = grpc.server(CollapsingThreadPoolExecutor())
   beam_expansion_api_pb2_grpc.add_ExpansionServiceServicer_to_server(
       expansion_service.ExpansionServiceServicer(PipelineOptions()), server
   )

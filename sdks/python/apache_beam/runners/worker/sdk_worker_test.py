@@ -93,7 +93,7 @@ class SdkWorkerTest(unittest.TestCase):
 
       test_controller = BeamFnControlServicer(requests)
 
-      server = grpc.server(CollapsingThreadPoolExecutor(max_workers=10))
+      server = grpc.server(CollapsingThreadPoolExecutor())
       beam_fn_api_pb2_grpc.add_BeamFnControlServicer_to_server(
           test_controller, server)
       test_port = server.add_insecure_port("[::]:0")

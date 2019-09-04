@@ -67,7 +67,7 @@ class DataChannelTest(unittest.TestCase):
     data_channel_service = \
       data_servicer.get_conn_by_worker_id(worker_id)
 
-    server = grpc.server(CollapsingThreadPoolExecutor(max_workers=2))
+    server = grpc.server(CollapsingThreadPoolExecutor())
     beam_fn_api_pb2_grpc.add_BeamFnDataServicer_to_server(
         data_servicer, server)
     test_port = server.add_insecure_port('[::]:0')
