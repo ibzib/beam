@@ -1705,7 +1705,8 @@ class BeamModulePlugin implements Plugin<Project> {
         ]
         def pipelineOpts = [
           "--runner=PortableRunner",
-          "--environment_cache_millis=10000"
+          "--environment_cache_millis=10000",
+          "--sdk_worker_parallelism=1"
         ]
         def beamPythonTestPipelineOptions = [
           "pipeline_opts": pipelineOpts,
