@@ -49,15 +49,17 @@ class FlinkRunner(portable_runner.PortableRunner):
     flink_master = self.add_http_scheme(
         flink_options.flink_master)
     flink_options.flink_master = flink_master
-    if flink_master in MAGIC_HOST_NAMES or sys.version_info < (3, 6):
-      return job_server.StopOnExitJobServer(FlinkJarJobServer(options))
-    else:
-      # This has to be changed [auto], otherwise we will attempt to submit a
-      # the pipeline remotely on the Flink JobMaster which will _fail_.
-      # DO NOT CHANGE the following line, unless you have tested this.
-      flink_options.flink_master = '[auto]'
-      return flink_uber_jar_job_server.FlinkUberJarJobServer(
-          flink_master, options)
+    # TODO(BEAM-8835) Use FlinkUberJarJobServer after fixing artifact retrieval.
+    # if flink_master in MAGIC_HOST_NAMES or sys.version_info < (3, 6):
+    #   return job_server.StopOnExitJobServer(FlinkJarJobServer(options))
+    # else:
+    #   # This has to be changed [auto], otherwise we will attempt to submit a
+    #   # the pipeline remotely on the Flink JobMaster which will _fail_.
+    #   # DO NOT CHANGE the following line, unless you have tested this.
+    #   flink_options.flink_master = '[auto]'
+    #   return flink_uber_jar_job_server.FlinkUberJarJobServer(
+    #       flink_master, options)
+    return job_server.StopOnExitJobServer(FlinkJarJobServer(options))
 
   @staticmethod
   def add_http_scheme(flink_master):
