@@ -45,6 +45,7 @@ import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.rel.metadata.Me
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.rel.metadata.ReflectiveRelMetadataProvider;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.rel.metadata.RelMetadataProvider;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.rel.metadata.RelMetadataQuery;
+import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.rex.RexVariable;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.schema.SchemaPlus;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.sql.SqlNode;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.sql.SqlOperatorTable;
@@ -156,7 +157,9 @@ public class CalciteQueryPlanner implements QueryPlanner {
               .simplify();
       // beam physical plan
       root.rel
-          .getCluster()
+          .getCluster();
+
+          root.rel.getCluster()
           .setMetadataProvider(
               ChainedRelMetadataProvider.of(
                   ImmutableList.of(

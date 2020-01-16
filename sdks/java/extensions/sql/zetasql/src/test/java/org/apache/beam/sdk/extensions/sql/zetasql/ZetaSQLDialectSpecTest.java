@@ -46,14 +46,21 @@ import static org.apache.beam.sdk.extensions.sql.zetasql.TestInput.TIME_TABLE;
 import static org.apache.beam.sdk.schemas.Schema.FieldType.DATETIME;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.Timestamp;
+import com.google.protobuf.util.Timestamps;
+import com.google.zetasql.PreparedExpression;
 import com.google.zetasql.SqlException;
 import com.google.zetasql.StructType.StructField;
+import com.google.zetasql.Type;
 import com.google.zetasql.TypeFactory;
 import com.google.zetasql.Value;
 import com.google.zetasql.ZetaSQLType.TypeKind;
 import com.google.zetasql.ZetaSQLValue.ValueProto;
+import com.google.zetasql.ZetaSQLValue.ValueProto.Datetime;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.sdk.extensions.sql.impl.JdbcConnection;
@@ -84,6 +91,7 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Immutabl
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.joda.time.chrono.ISOChronology;
 import org.junit.Assert;
 import org.junit.Before;
@@ -3731,6 +3739,69 @@ public class ZetaSQLDialectSpecTest {
             Row.withSchema(singleField).addValues(14L).build(),
             Row.withSchema(singleField).addValues(15L).build());
     pipeline.run().waitUntilFinish(Duration.standardMinutes(PIPELINE_EXECUTION_WAITTIME_MINUTES));
+  }
+
+  @Test
+  public void testStringParameter() {
+    String str = "23";
+    Value value = Value.createStringValue(str);
+    System.out.println(value.getType().isString());
+  }
+
+  @Test
+  public void testIntParameter() {
+    String str = "23";
+    // TODO(ibzib) implement me
+    Value value;
+    Assert.assertTrue(value.getType().isInt64());
+  }
+
+  @Test
+  public void testBoolParameter() {
+    String str = "FALSE";
+    // TODO(ibzib) implement me
+    Value value;
+    Assert.assertTrue(value.getType().isBool());
+  }
+
+  @Test
+  public void testFloat64Max() {
+    String str = "1.7976931348623157e+308";
+    // TODO(ibzib) implement me
+    Value value;
+    Assert.assertTrue(value.getType().isDouble());
+    Assert.assertEquals(1.7976931348623157E308, value.getDoubleValue(), 0);
+  }
+
+  @Test
+  public void testInt64Max() {
+    String str = "9223372036854775807";
+    // TODO(ibzib) implement me
+    Value value;
+    Assert.assertTrue(value.getType().isInt64());
+  }
+
+  @Test
+  public void testInt64MaxPlusOne() {
+    String str = "9223372036854775808";
+    // TODO(ibzib) implement me
+    Value value;
+    Assert.assertTrue(value.getType().isDouble()); // actually uint64
+  }
+
+  @Test
+  public void testStructParameter() {
+    String str = "STRUCT<int64, date>(5, \"2011-05-05\")";
+    // TODO(ibzib) implement me
+    Value value;
+    Assert.assertTrue(value.getType().isStruct());
+  }
+
+  @Test
+  public void testTimestampParameterWithOffset() {
+    String timestampStr = "2018-12-10 10:38:59-1000";
+    Value value = DateTimeUtils.parseTimestampWithTZToValue(timestampStr);
+    Assert.assertTrue(value.getType().isTimestamp());
   }
 
   private void initializeCalciteEnvironment() {

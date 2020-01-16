@@ -18,6 +18,7 @@
 package org.apache.beam.sdk.extensions.sql.zetasql;
 
 import com.google.zetasql.Value;
+import com.google.zetasql.ZetaSQLValue.ValueProto;
 import java.util.Collections;
 import java.util.Map;
 import org.apache.beam.sdk.extensions.sql.impl.CalciteQueryPlanner.NonCumulativeCostImpl;

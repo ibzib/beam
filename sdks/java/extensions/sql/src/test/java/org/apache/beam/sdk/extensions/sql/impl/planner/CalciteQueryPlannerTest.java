@@ -70,4 +70,12 @@ public class CalciteQueryPlannerTest extends BaseRelTest {
         root.getCluster().getMetadataQuery().getCumulativeCost(root) instanceof BeamCostModel);
     Assert.assertFalse(root.getCluster().getMetadataQuery().getCumulativeCost(root).isInfinite());
   }
+
+  @Test
+  public void testQueryParam() {
+    // This handler is not our handler. It tests if the cumulative handler of Calcite works as
+    // expected.
+    String sql = "select * from medium_table where id=?";
+    BeamRelNode root = env.parseQuery(sql);
+  }
 }

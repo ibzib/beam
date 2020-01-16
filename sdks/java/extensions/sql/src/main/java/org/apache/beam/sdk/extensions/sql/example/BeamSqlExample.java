@@ -63,7 +63,7 @@ class BeamSqlExample {
 
     // Case 1. run a simple SQL query over input PCollection with BeamSql.simpleQuery;
     PCollection<Row> outputStream =
-        inputTable.apply(SqlTransform.query("select c1, c2, c3 from PCOLLECTION where c1 > 1"));
+        inputTable.apply(SqlTransform.query("select c1, c2, c3 from PCOLLECTION where c1 > @blah"));
 
     // print the output record of case 1;
     outputStream.apply(

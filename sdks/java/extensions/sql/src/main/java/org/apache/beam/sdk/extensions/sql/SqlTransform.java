@@ -27,6 +27,7 @@ import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.extensions.sql.impl.BeamSqlEnv;
 import org.apache.beam.sdk.extensions.sql.impl.BeamSqlEnv.BeamSqlEnvBuilder;
 import org.apache.beam.sdk.extensions.sql.impl.BeamSqlPipelineOptions;
+import org.apache.beam.sdk.extensions.sql.impl.QueryParameter;
 import org.apache.beam.sdk.extensions.sql.impl.rel.BeamSqlRelUtils;
 import org.apache.beam.sdk.extensions.sql.impl.schema.BeamPCollectionTable;
 import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
@@ -174,14 +175,19 @@ public abstract class SqlTransform extends PTransform<PInput, PCollection<Row>> 
    *       the current query call.
    * </ul>
    */
-  public static SqlTransform query(String queryString) {
+  public static SqlTransform query(String queryString, List<QueryParameter> queryParameters) {
     return builder()
         .setQueryString(queryString)
+        // .setQueryParameters(queryParameters)
         .setUdafDefinitions(Collections.emptyList())
         .setUdfDefinitions(Collections.emptyList())
         .setTableProviderMap(Collections.emptyMap())
         .setAutoUdfUdafLoad(false)
         .build();
+  }
+
+  public static SqlTransform query(String queryString) {
+    return query(queryString, Collections.emptyList());
   }
 
   public SqlTransform withTableProvider(String name, TableProvider tableProvider) {
