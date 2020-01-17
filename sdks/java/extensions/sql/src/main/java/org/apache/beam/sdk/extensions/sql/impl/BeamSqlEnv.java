@@ -22,6 +22,7 @@ import static org.apache.beam.vendor.calcite.v1_20_0.com.google.common.base.Prec
 import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.Set;
 import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.annotations.Internal;
 import org.apache.beam.sdk.extensions.sql.BeamSqlUdf;
+import org.apache.beam.sdk.extensions.sql.impl.QueryParameter.ParameterMode;
 import org.apache.beam.sdk.extensions.sql.impl.planner.BeamRuleSets;
 import org.apache.beam.sdk.extensions.sql.impl.rel.BeamRelNode;
 import org.apache.beam.sdk.extensions.sql.impl.udf.BeamBuiltinFunctionProvider;
@@ -99,8 +101,12 @@ public class BeamSqlEnv {
     return withTableProvider(inMemoryMetaStore);
   }
 
-  public BeamRelNode parseQuery(String query) throws ParseException {
-    return planner.convertToBeamRel(query);
+  public BeamRelNode parseQuery(String query) {
+    return parseQuery(query, Collections.emptyList(), ParameterMode.NAMED);
+  }
+
+  public BeamRelNode parseQuery(String query, List<QueryParameter> queryParameters, QueryParameter.ParameterMode parameterMode) throws ParseException {
+    return planner.convertToBeamRel(query, queryParameters, parameterMode);
   }
 
   public boolean isDdl(String sqlStatement) throws ParseException {

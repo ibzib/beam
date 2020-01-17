@@ -3741,69 +3741,6 @@ public class ZetaSQLDialectSpecTest {
     pipeline.run().waitUntilFinish(Duration.standardMinutes(PIPELINE_EXECUTION_WAITTIME_MINUTES));
   }
 
-  @Test
-  public void testStringParameter() {
-    String str = "23";
-    Value value = Value.createStringValue(str);
-    System.out.println(value.getType().isString());
-  }
-
-  @Test
-  public void testIntParameter() {
-    String str = "23";
-    // TODO(ibzib) implement me
-    Value value;
-    Assert.assertTrue(value.getType().isInt64());
-  }
-
-  @Test
-  public void testBoolParameter() {
-    String str = "FALSE";
-    // TODO(ibzib) implement me
-    Value value;
-    Assert.assertTrue(value.getType().isBool());
-  }
-
-  @Test
-  public void testFloat64Max() {
-    String str = "1.7976931348623157e+308";
-    // TODO(ibzib) implement me
-    Value value;
-    Assert.assertTrue(value.getType().isDouble());
-    Assert.assertEquals(1.7976931348623157E308, value.getDoubleValue(), 0);
-  }
-
-  @Test
-  public void testInt64Max() {
-    String str = "9223372036854775807";
-    // TODO(ibzib) implement me
-    Value value;
-    Assert.assertTrue(value.getType().isInt64());
-  }
-
-  @Test
-  public void testInt64MaxPlusOne() {
-    String str = "9223372036854775808";
-    // TODO(ibzib) implement me
-    Value value;
-    Assert.assertTrue(value.getType().isDouble()); // actually uint64
-  }
-
-  @Test
-  public void testStructParameter() {
-    String str = "STRUCT<int64, date>(5, \"2011-05-05\")";
-    // TODO(ibzib) implement me
-    Value value;
-    Assert.assertTrue(value.getType().isStruct());
-  }
-
-  @Test
-  public void testTimestampParameterWithOffset() {
-    String timestampStr = "2018-12-10 10:38:59-1000";
-    Value value = DateTimeUtils.parseTimestampWithTZToValue(timestampStr);
-    Assert.assertTrue(value.getType().isTimestamp());
-  }
-
   private void initializeCalciteEnvironment() {
     initializeCalciteEnvironmentWithContext();
   }

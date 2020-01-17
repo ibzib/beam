@@ -999,6 +999,7 @@ public class ExpressionConverter {
   }
 
   private RexNode convertResolvedParameter(ResolvedParameter parameter) {
+    // TODO(ibzib) this logic assumes named parameters. Fix it to work with positional params.
     assert parameter.getType().equals(queryParams.get(parameter.getName()).getType());
     return convertValueToRexNode(
         queryParams.get(parameter.getName()).getType(), queryParams.get(parameter.getName()));

@@ -12,23 +12,28 @@ public abstract class QueryParameter<T> {
   private final Type type;
   private final T value;
 
+  public enum ParameterMode {
+    /** TODO(ibzib) docstring */
+    NAMED,
+    /** TODO(ibzib) docstring */
+    POSITIONAL,
+  }
+
+  public enum TypeKind {
+    STRING,
+    INT64,
+    FLOAT64,
+    BOOL,
+    BYTES,
+    TIMESTAMP,
+    ARRAY,
+    STRUCT,
+  }
+
   public static class Type {
     private final TypeKind typeKind;
     private final Type arrayType;
     private final List<StructType> structTypes;
-
-    public enum TypeKind {
-      STRING,
-      INT64,
-      FLOAT64,
-      BOOL,
-      BYTES,
-      TIMESTAMP,
-      ARRAY,
-      STRUCT,
-      /** Represents the type of elements in an empty array. */
-      VOID,
-    }
 
     static class StructType {
       private final String name;
@@ -64,7 +69,6 @@ public abstract class QueryParameter<T> {
     public static final Type BOOL = createSimpleType(TypeKind.BOOL);
     public static final Type BYTES = createSimpleType(TypeKind.BYTES);
     public static final Type TIMESTAMP = createSimpleType(TypeKind.TIMESTAMP);
-    public static final Type VOID = createSimpleType(TypeKind.VOID);
 
     /**
      * TODO(ibzib) docstring
@@ -127,14 +131,23 @@ public abstract class QueryParameter<T> {
     }
   }
 
+  // TODO(ibzib) separate QP into (name, (type, value)) so array elems don't need names
+  // but then we need to duplicate a bunch of types e.g. StringParameter, StringValue :<
+  // but StringParameter is then just a superset of StringValue. -- but to reuse, user will have
+  // maybe easier to just have QPs without names? -- we'll need those anyway, for positional params.
+  // speaking of which, let's see how pos params work in zetasql.
   public static class ArrayParameter<QP extends QueryParameter> extends QueryParameter<List<QP>> {
+
+    // TODO(ibzib) this must have a type
     public ArrayParameter(String name, List<QP> value) {
       super(
           name,
-          Type.createArrayType(value.isEmpty() ? Type.VOID : value.get(0).getType()),
+          Type.createArrayType(value.get(0).getType()),
           value);
       // TODO(ibzib) validate
     }
+
+    // TODO(ibzib) helper to create arrays from scalar values
   }
 
   public static class StructParameter extends QueryParameter<List<QueryParameter>> {

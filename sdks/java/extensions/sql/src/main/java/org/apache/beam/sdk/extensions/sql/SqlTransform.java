@@ -28,6 +28,7 @@ import org.apache.beam.sdk.extensions.sql.impl.BeamSqlEnv;
 import org.apache.beam.sdk.extensions.sql.impl.BeamSqlEnv.BeamSqlEnvBuilder;
 import org.apache.beam.sdk.extensions.sql.impl.BeamSqlPipelineOptions;
 import org.apache.beam.sdk.extensions.sql.impl.QueryParameter;
+import org.apache.beam.sdk.extensions.sql.impl.QueryParameter.ParameterMode;
 import org.apache.beam.sdk.extensions.sql.impl.rel.BeamSqlRelUtils;
 import org.apache.beam.sdk.extensions.sql.impl.schema.BeamPCollectionTable;
 import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
@@ -88,6 +89,10 @@ public abstract class SqlTransform extends PTransform<PInput, PCollection<Row>> 
 
   abstract String queryString();
 
+  abstract List<QueryParameter> queryParameters();
+
+  abstract QueryParameter.ParameterMode parameterMode();
+
   abstract List<UdfDefinition> udfDefinitions();
 
   abstract List<UdafDefinition> udafDefinitions();
@@ -123,7 +128,7 @@ public abstract class SqlTransform extends PTransform<PInput, PCollection<Row>> 
     sqlEnvBuilder.setPipelineOptions(input.getPipeline().getOptions());
 
     BeamSqlEnv sqlEnv = sqlEnvBuilder.build();
-    return BeamSqlRelUtils.toPCollection(input.getPipeline(), sqlEnv.parseQuery(queryString()));
+    return BeamSqlRelUtils.toPCollection(input.getPipeline(), sqlEnv.parseQuery(queryString(), queryParameters(), parameterMode()));
   }
 
   @SuppressWarnings("unchecked")
@@ -152,6 +157,28 @@ public abstract class SqlTransform extends PTransform<PInput, PCollection<Row>> 
     udafDefinitions().forEach(udaf -> sqlEnvBuilder.addUdaf(udaf.udafName(), udaf.combineFn()));
   }
 
+  private static SqlTransform queryWithParameters(String queryString, List<QueryParameter> queryParameters, ParameterMode parameterMode) {
+    return builder()
+        .setQueryString(queryString)
+        .setQueryParameters(queryParameters)
+        .setParameterMode(parameterMode)
+        .setUdafDefinitions(Collections.emptyList())
+        .setUdfDefinitions(Collections.emptyList())
+        .setTableProviderMap(Collections.emptyMap())
+        .setAutoUdfUdafLoad(false)
+        .build();
+  }
+
+  public static SqlTransform queryWithNamedParameters(String queryString,
+      List<QueryParameter> queryParameters) {
+    return queryWithParameters(queryString, queryParameters, ParameterMode.NAMED);
+  }
+
+  public static SqlTransform queryWithPositionalParameters(String queryString,
+      List<QueryParameter> queryParameters) {
+    return queryWithParameters(queryString, queryParameters, ParameterMode.POSITIONAL);
+  }
+
   /**
    * Returns a {@link SqlTransform} representing an equivalent execution plan.
    *
@@ -175,19 +202,8 @@ public abstract class SqlTransform extends PTransform<PInput, PCollection<Row>> 
    *       the current query call.
    * </ul>
    */
-  public static SqlTransform query(String queryString, List<QueryParameter> queryParameters) {
-    return builder()
-        .setQueryString(queryString)
-        // .setQueryParameters(queryParameters)
-        .setUdafDefinitions(Collections.emptyList())
-        .setUdfDefinitions(Collections.emptyList())
-        .setTableProviderMap(Collections.emptyMap())
-        .setAutoUdfUdafLoad(false)
-        .build();
-  }
-
   public static SqlTransform query(String queryString) {
-    return query(queryString, Collections.emptyList());
+    return queryWithNamedParameters(queryString, Collections.emptyList());
   }
 
   public SqlTransform withTableProvider(String name, TableProvider tableProvider) {
@@ -250,6 +266,10 @@ public abstract class SqlTransform extends PTransform<PInput, PCollection<Row>> 
   @AutoValue.Builder
   abstract static class Builder {
     abstract Builder setQueryString(String queryString);
+
+    abstract Builder setQueryParameters(List<QueryParameter> queryParameters);
+
+    abstract Builder setParameterMode(QueryParameter.ParameterMode queryParameterMode);
 
     abstract Builder setUdfDefinitions(List<UdfDefinition> udfDefinitions);
 

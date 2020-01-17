@@ -20,10 +20,12 @@ package org.apache.beam.sdk.extensions.sql.zetasql;
 import com.google.zetasql.Value;
 import com.google.zetasql.ZetaSQLValue.ValueProto;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.extensions.sql.impl.CalciteQueryPlanner.NonCumulativeCostImpl;
 import org.apache.beam.sdk.extensions.sql.impl.JdbcConnection;
 import org.apache.beam.sdk.extensions.sql.impl.ParseException;
+import org.apache.beam.sdk.extensions.sql.impl.QueryParameter;
 import org.apache.beam.sdk.extensions.sql.impl.QueryPlanner;
 import org.apache.beam.sdk.extensions.sql.impl.SqlConversionException;
 import org.apache.beam.sdk.extensions.sql.impl.planner.BeamCostModel;
@@ -83,10 +85,12 @@ public class ZetaSQLQueryPlanner implements QueryPlanner {
             this.getClass().getCanonicalName()));
   }
 
-  public BeamRelNode convertToBeamRel(String sqlStatement, Map<String, Value> queryParams)
+  @Override
+  public BeamRelNode convertToBeamRel(String sqlStatement, List<QueryParameter> queryParameters, QueryParameter.ParameterMode parameterMode)
       throws ParseException, SqlConversionException {
     try {
-      return parseQuery(sqlStatement, queryParams);
+      Map<String, Value> translatedParams = ZetaSQLQueryParameterTranslator.translate(queryParameters, parameterMode);
+      return parseQuery(sqlStatement, translatedParams);
     } catch (RelConversionException e) {
       throw new SqlConversionException(e.getCause());
     }

@@ -20,6 +20,7 @@ package org.apache.beam.sdk.extensions.sql.impl;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.beam.sdk.extensions.sql.impl.QueryParameter.ParameterMode;
 import org.apache.beam.sdk.extensions.sql.impl.planner.BeamCostModel;
 import org.apache.beam.sdk.extensions.sql.impl.planner.RelMdNodeStats;
 import org.apache.beam.sdk.extensions.sql.impl.rel.BeamLogicalConvention;
@@ -180,6 +181,15 @@ public class CalciteQueryPlanner implements QueryPlanner {
       planner.close();
     }
     return beamRelNode;
+  }
+
+  @Override
+  public BeamRelNode convertToBeamRel(String sqlStatement, List<QueryParameter> queryParameters,
+      ParameterMode parameterMode) throws ParseException, SqlConversionException {
+    if (!queryParameters.isEmpty()) {
+      throw new UnsupportedOperationException("Beam Calcite SQL does not yet support query parameters. https://issues.apache.org/jira/browse/BEAM-3188");
+    }
+    return convertToBeamRel(sqlStatement);
   }
 
   // It needs to be public so that the generated code in Calcite can access it.

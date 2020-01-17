@@ -17,6 +17,10 @@
  */
 package org.apache.beam.sdk.extensions.sql.impl;
 
+import com.google.common.collect.ImmutableList;
+import java.util.Collections;
+import java.util.List;
+import org.apache.beam.sdk.extensions.sql.impl.QueryParameter.ParameterMode;
 import org.apache.beam.sdk.extensions.sql.impl.rel.BeamRelNode;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.sql.SqlNode;
 
@@ -25,8 +29,11 @@ import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.sql.SqlNode;
  * {@link SqlNode}.
  */
 public interface QueryPlanner {
-  /** It parses and validate the input query, then convert into a {@link BeamRelNode} tree. */
+  /** Parse, validate, and convert a query without parameters. */
   BeamRelNode convertToBeamRel(String sqlStatement) throws ParseException, SqlConversionException;
+
+  /** It parses and validate the input query, then convert into a {@link BeamRelNode} tree. */
+  BeamRelNode convertToBeamRel(String sqlStatement, List<QueryParameter> queryParameters, QueryParameter.ParameterMode parameterMode) throws ParseException, SqlConversionException;
 
   /** Parse input SQL query, and return a {@link SqlNode} as grammar tree. */
   SqlNode parse(String sqlStatement) throws ParseException;

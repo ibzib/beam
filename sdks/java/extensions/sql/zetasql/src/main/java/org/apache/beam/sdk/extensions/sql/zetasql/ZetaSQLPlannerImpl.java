@@ -30,6 +30,7 @@ import org.apache.beam.sdk.extensions.sql.zetasql.translation.ConversionContext;
 import org.apache.beam.sdk.extensions.sql.zetasql.translation.ExpressionConverter;
 import org.apache.beam.sdk.extensions.sql.zetasql.translation.QueryStatementConverter;
 import org.apache.beam.vendor.calcite.v1_20_0.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.calcite.v1_20_0.com.google.common.collect.ImmutableMap;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.plan.RelOptCluster;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.plan.RelOptPlanner;
@@ -131,6 +132,9 @@ public class ZetaSQLPlannerImpl implements Planner {
   }
 
   public RelRoot rel(String sql, Map<String, Value> params) {
+    // TODO(ibzib) delete me
+    params = ImmutableMap.of("asdf", Value.createInt64Value(1), "dddd", Value.createInt64Value(2));
+
     this.cluster = RelOptCluster.create(planner, new RexBuilder(typeFactory));
     this.expressionConverter = new ExpressionConverter(cluster, params);
 

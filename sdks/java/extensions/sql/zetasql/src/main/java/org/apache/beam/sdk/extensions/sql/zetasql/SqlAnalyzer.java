@@ -31,6 +31,7 @@ import com.google.zetasql.ZetaSQLBuiltinFunctionOptions;
 import com.google.zetasql.ZetaSQLFunctions.FunctionEnums.Mode;
 import com.google.zetasql.ZetaSQLOptions.ErrorMessageMode;
 import com.google.zetasql.ZetaSQLOptions.LanguageFeature;
+import com.google.zetasql.ZetaSQLOptions.ParameterMode;
 import com.google.zetasql.ZetaSQLOptions.ProductMode;
 import com.google.zetasql.resolvedast.ResolvedNodes.ResolvedCreateFunctionStmt;
 import com.google.zetasql.resolvedast.ResolvedNodes.ResolvedStatement;
@@ -119,10 +120,15 @@ class SqlAnalyzer {
   private static AnalyzerOptions initAnalyzerOptions(Map<String, Value> queryParams) {
     AnalyzerOptions options = initAnalyzerOptions();
 
-    for (Map.Entry<String, Value> entry : queryParams.entrySet()) {
-      options.addQueryParameter(entry.getKey(), entry.getValue().getType());
-    }
+    // TODO(ibzib) set ParameterMode according to queryParams
+    options.setParameterMode(ParameterMode.PARAMETER_POSITIONAL);
 
+    // for (Map.Entry<String, Value> entry : queryParams.entrySet()) {
+    //   options.addQueryParameter(entry.getKey(), entry.getValue().getType());
+    // }
+    for (Map.Entry<String, Value> entry : queryParams.entrySet()) {
+      options.addPositionalQueryParameter(entry.getValue().getType());
+    }
     return options;
   }
 
