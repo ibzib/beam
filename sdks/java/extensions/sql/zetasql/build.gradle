@@ -50,3 +50,13 @@ dependencies {
   testRuntimeClasspath library.java.slf4j_jdk14
 }
 
+// Run basic ZetaSQL example
+task runBasicExample(type: JavaExec) {
+  description = "Run basic ZetaSQL example"
+  main = "org.apache.beam.sdk.extensions.sql.example.BeamSqlExample"
+  classpath = sourceSets.main.runtimeClasspath
+  args = [
+    "--runner=DirectRunner",
+    "--plannerName=org.apache.beam.sdk.extensions.sql.zetasql.ZetaSQLQueryPlanner",
+  ]
+}
