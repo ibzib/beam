@@ -1,9 +1,13 @@
 package org.apache.beam.sdk.extensions.sql.zetasql;
 
+import com.google.zetasql.ArrayType;
+import com.google.zetasql.TypeFactory;
 import com.google.zetasql.Value;
+import com.google.zetasql.ZetaSQLType;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.extensions.sql.impl.QueryParameter;
+import org.apache.beam.sdk.extensions.sql.impl.QueryParameter.ArrayParameter;
 import org.apache.beam.sdk.extensions.sql.impl.QueryParameter.StringParameter;
 import org.apache.beam.sdk.extensions.sql.impl.QueryParameter.TimestampParameter;
 import org.apache.beam.sdk.extensions.sql.impl.QueryParameter.Type;
@@ -39,7 +43,13 @@ public class ZetaSQLQueryParameterTranslator {
       case TIMESTAMP:
         return DateTimeUtils.parseTimestampWithTZToValue(((TimestampParameter)queryParameter).getValue());
       case ARRAY:
-        return null;
+        ArrayParameter<? extends QueryParameter> arrayParameter = (ArrayParameter<?>) queryParameter;
+        // darn
+
+        for (QueryParameter element : arrayParameter.getValue()) {
+          Value elementValue = queryParameterToValue(element);
+        }
+        return Value.createArrayValue(TypeFactory.createArrayType());
       case STRUCT:
         return null;
       case VOID:

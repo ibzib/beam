@@ -17,7 +17,6 @@ public class ZetaSQLQueryParameterTranslatorTest {
     String str = "23";
     QueryParameter param = new StringParameter("", str);
     Value value = ZetaSQLQueryParameterTranslator.queryParameterToValue(param);
-    Assert.assertTrue(value.getType().isString());
     Assert.assertEquals(str, value.getStringValue());
   }
 
@@ -75,7 +74,7 @@ public class ZetaSQLQueryParameterTranslatorTest {
     String timestampStr = "2018-12-10 10:38:59-1000";
     QueryParameter param = new TimestampParameter("", timestampStr);
     Value value = ZetaSQLQueryParameterTranslator.queryParameterToValue(param);
-    Assert.assertTrue(value.getType().isTimestamp());
+    Assert.assertEquals(1544474339000000L, value.getTimestampUnixMicros());
   }
 
 }
