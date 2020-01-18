@@ -16,16 +16,24 @@ import org.apache.beam.sdk.extensions.sql.impl.QueryParameter.TimestampParameter
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 
-/** TODO(ibzib) docstring */
+/** Contains methods for translating Beam query parameters into ZetaSQL query parameters. */
 public class ZetaSQLQueryParameterTranslator {
 
-  /** TODO(ibzib) docstring */
-  public static Map<String, Value> translate(List<QueryParameter> beamParameters, ParameterMode parameterMode) {
+  /** Translates Beam query parameters into ZetaSQL query parameters. */
+  static Map<String, Value> translate(List<QueryParameter> beamParameters, ParameterMode parameterMode) {
     final ImmutableMap.Builder<String, Value> zetaParameters = ImmutableMap.builder();
+    int i = 1;
     for (QueryParameter beamParameter : beamParameters) {
-      zetaParameters.put(beamParameter.getName(), queryParameterToValue(beamParameter));
+      String key;
+      if (parameterMode == ParameterMode.POSITIONAL) {
+        // Positional parameters must be keyed in ZetaSQL, even though the keys are ultimately discarded.
+        key = String.format("parameter%d", i);
+      } else {
+        key = beamParameter.getName();
+      }
+      zetaParameters.put(key, queryParameterToValue(beamParameter));
+      i++;
     }
-    // TODO(ibzib) if using positional parameters, we must give them names here.
     return zetaParameters.build();
   }
 
@@ -48,7 +56,7 @@ public class ZetaSQLQueryParameterTranslator {
       case ARRAY:
         ArrayParameter<? extends QueryParameter> arrayParameter = (ArrayParameter<?>) queryParameter;
         // darn
-        com.google.zetasql.Type type = null; // TODO(ibzib) convert qp to zeta type
+        com.google.zetasql.Type type = getZetaSQLType(queryParameter.getType());
         ArrayList<Value> values = new ArrayList<>();
         for (QueryParameter element : arrayParameter.getValue()) {
           values.add(queryParameterToValue(element));
@@ -59,7 +67,7 @@ public class ZetaSQLQueryParameterTranslator {
       default:
         throw new UnsupportedOperationException(
             String.format(
-                "Cannot translate query parameter %s with unknown type %s",
+                "Cannot translate query parameter %s with unknown type %s.",
                 queryParameter.getName(),
                 typeKind));
     }
@@ -87,7 +95,7 @@ public class ZetaSQLQueryParameterTranslator {
         return null;
       default:
         throw new UnsupportedOperationException(
-            String.format("cannot translate type %s", typeKind));
+            String.format("Cannot translate type %s.", typeKind));
     }
   }
 }

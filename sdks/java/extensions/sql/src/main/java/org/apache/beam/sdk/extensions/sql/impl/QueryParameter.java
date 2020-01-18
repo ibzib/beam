@@ -1,21 +1,38 @@
 package org.apache.beam.sdk.extensions.sql.impl;
 
+import com.google.common.collect.ImmutableList;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import javax.annotation.Nullable;
+import org.apache.beam.sdk.extensions.sql.impl.QueryParameter.Type.ArrayType;
+import org.apache.beam.sdk.extensions.sql.impl.QueryParameter.Type.StructMemberType;
 import org.apache.beam.sdk.extensions.sql.impl.QueryParameter.Type.StructType;
+import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.interpreter.Scalar;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Immutable
+ * An immutable tuple of name, type, and value. Note that the name may be left empty depending on the {@link ParameterMode} used by the application.
+ *
+ * Query parameters are statically type checked except for {@link StructParameter}. Structs will be
+ * validated at runtime.
+ *
+ * @param <T> The native Java type for the value of this parameter.
  */
 public abstract class QueryParameter<T> {
+  private static final Logger LOG = LoggerFactory.getLogger(QueryParameter.class);
   private final String name;
   private final Type type;
   private final T value;
 
+  /** Parameters have different usage semantics depending on the parameter mode specified. Note that some parameter modes might not be supported by all backends. */
   public enum ParameterMode {
-    /** TODO(ibzib) docstring */
+    /** Parameter values are resolved according to their names. Each parameter must have a name. Parameters may be listed in any arbitrary order. Like variables, parameters may be reused any number of times. */
     NAMED,
-    /** TODO(ibzib) docstring */
+    /** Parameters are unnamed and resolved according to the order they are listed.
+     * Each parameter is used only once. */
     POSITIONAL,
   }
 
@@ -32,14 +49,13 @@ public abstract class QueryParameter<T> {
 
   public static class Type {
     private final TypeKind typeKind;
-    private final Type arrayType;
-    private final List<StructType> structTypes;
 
-    static class StructType {
+    /** A member of a {@link StructType}. */
+    public static class StructMemberType {
       private final String name;
       private final Type type;
 
-      StructType(String name, Type type) {
+      StructMemberType(String name, Type type) {
         this.name = name;
         this.type = type;
       }
@@ -53,63 +69,45 @@ public abstract class QueryParameter<T> {
       }
     }
 
-    private Type(TypeKind typeKind, @Nullable Type arrayType, @Nullable List<StructType> structTypes) {
+    public static class StructType extends Type {
+      private final List<StructMemberType> memberTypes;
+
+      StructType(List<StructMemberType> memberTypes) {
+        super(TypeKind.STRUCT);
+        this.memberTypes = memberTypes;
+      }
+
+      public List<StructMemberType> getMemberTypes() {
+        return memberTypes;
+      }
+    }
+
+    public static class ArrayType extends Type {
+      private final Type elementType;
+
+      ArrayType(Type elementType) {
+        super(TypeKind.ARRAY);
+        this.elementType = elementType;
+      }
+
+      public Type getElementType() {
+        return elementType;
+      }
+    }
+
+    private Type(TypeKind typeKind) {
       this.typeKind = typeKind;
-      this.arrayType = arrayType;
-      this.structTypes = structTypes;
     }
 
-    private static Type createSimpleType(TypeKind typeKind) {
-      return new Type(typeKind, null, null);
-    }
-
-    public static final Type STRING = createSimpleType(TypeKind.STRING);
-    public static final Type INT64 = createSimpleType(TypeKind.INT64);
-    public static final Type FLOAT64 = createSimpleType(TypeKind.FLOAT64);
-    public static final Type BOOL = createSimpleType(TypeKind.BOOL);
-    public static final Type BYTES = createSimpleType(TypeKind.BYTES);
-    public static final Type TIMESTAMP = createSimpleType(TypeKind.TIMESTAMP);
-
-    /**
-     * TODO(ibzib) docstring
-     */
-    static Type createArrayType(Type arrayType) {
-      return new Type(TypeKind.ARRAY, arrayType, null);
-    }
-
-    /**
-     * TODO(ibzib) docstring
-     */
-    static Type createStructType(List<StructType> structTypes) {
-      return new Type(TypeKind.STRUCT, null, structTypes);
-    }
+    public static final Type STRING = new Type(TypeKind.STRING);
+    public static final Type INT64 = new Type(TypeKind.INT64);
+    public static final Type FLOAT64 = new Type(TypeKind.FLOAT64);
+    public static final Type BOOL = new Type(TypeKind.BOOL);
+    public static final Type BYTES = new Type(TypeKind.BYTES);
+    public static final Type TIMESTAMP = new Type(TypeKind.TIMESTAMP);
 
     public TypeKind getTypeKind() {
       return typeKind;
-    }
-
-    /**
-     * @throws IllegalStateException when this type is not an array type.
-     * @return The type of the values in the array, or VOID if the array is empty.
-     * */
-    public Type getArrayType() {
-      // TODO(ibzib) reinforce this with generics for compile-time safety
-      if (typeKind != TypeKind.ARRAY) {
-        throw new IllegalStateException("Cannot get array subtype for non-array type " + typeKind);
-      }
-      return arrayType;
-    }
-
-    /**
-     * @throws IllegalStateException when this type is not a struct type.
-     * @return The respective types of the values in the struct.
-     * */
-    public List<StructType> getStructTypes() {
-      if (typeKind != TypeKind.STRUCT) {
-        throw new IllegalStateException(
-            "Cannot get struct subtypes for non-struct type " + typeKind);
-      }
-      return structTypes;
     }
   }
 
@@ -117,11 +115,17 @@ public abstract class QueryParameter<T> {
     ScalarParameter(String name, Type type, T value) {
       super(name, type, value);
     }
+    ScalarParameter(Type type, T value) {
+      super("", type, value);
+    }
   }
 
   public static class StringParameter extends ScalarParameter<String> {
     public StringParameter(String name, String value) {
       super(name, Type.STRING, value);
+    }
+    public StringParameter(String value) {
+      super(Type.STRING, value);
     }
   }
 
@@ -129,30 +133,33 @@ public abstract class QueryParameter<T> {
     public TimestampParameter(String name, String value) {
       super(name, Type.TIMESTAMP, value);
     }
+    public TimestampParameter(String value) {
+      super(Type.TIMESTAMP, value);
+    }
   }
 
-  // TODO(ibzib) separate QP into (name, (type, value)) so array elems don't need names
-  // but then we need to duplicate a bunch of types e.g. StringParameter, StringValue :<
-  // but StringParameter is then just a superset of StringValue. -- but to reuse, user will have
-  // maybe easier to just have QPs without names? -- we'll need those anyway, for positional params.
-  // speaking of which, let's see how pos params work in zetasql.
+  /** A parameter containing a list of other parameters. All elements must have the same type. */
   public static class ArrayParameter<QP extends QueryParameter> extends QueryParameter<List<QP>> {
 
-    // TODO(ibzib) this must have a type
-    public ArrayParameter(String name, List<QP> value) {
-      super(
-          name,
-          Type.createArrayType(value.get(0).getType()),
-          value);
-      // TODO(ibzib) validate
+    public ArrayParameter(String name, Type elementType, List<QP> elements) {
+      super(name, new ArrayType(elementType), elements);
+      // TODO(ibzib) type check
     }
 
-    // TODO(ibzib) helper to create arrays from scalar values
+    /** Convenience method for constructing an {@link ArrayParameter} from scalar values. */
+    @SafeVarargs
+    public static <T> ArrayParameter<ScalarParameter<T>> of(String name, Type elementType, T... elementValues) {
+      ArrayList<ScalarParameter<T>> elementParameters = new ArrayList<>();
+      for (T elementValue : elementValues) {
+        elementParameters.add(new ScalarParameter<>(elementType, elementValue));
+      }
+      return new ArrayParameter<>(name, elementType, elementParameters);
+    }
   }
 
   public static class StructParameter extends QueryParameter<List<QueryParameter>> {
-    public StructParameter(String name, List<StructType> memberTypes, List<QueryParameter> value) {
-      super(name, Type.createStructType(memberTypes), value);
+    public StructParameter(String name, List<StructMemberType> memberTypes, List<QueryParameter> value) {
+      super(name, new StructType(memberTypes), value);
       // TODO(ibzib) validate
     }
   }
@@ -173,6 +180,26 @@ public abstract class QueryParameter<T> {
 
   public T getValue() {
     return value;
+  }
+
+  public void validate() {
+    // TODO(ibzib) typecheck
+  }
+
+  /**
+   * Checks that query parameters are valid for the given parameter mode.
+   * @throws IllegalArgumentException if the parameters are not valid.
+   * */
+  public static void validate(List<QueryParameter> queryParameters, ParameterMode parameterMode) {
+    for (QueryParameter parameter : queryParameters) {
+    if (parameterMode == ParameterMode.NAMED) {
+        Preconditions.checkArgument(!parameter.getName().isEmpty(), String.format("Cannot use unnamed parameter of type %s in named parameter mode.", parameter.getType().getTypeKind()));
+      } else if (parameterMode == ParameterMode.POSITIONAL) {
+      if (!parameter.getName().isEmpty()) {
+        LOG.warn("Warning: attempting to use named parameter {} in positional parameter mode.", parameter.getName());
+      }
+    }
+    }
   }
 
 }

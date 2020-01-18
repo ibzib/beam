@@ -81,7 +81,7 @@ public class ZetaSQLQueryPlanner implements QueryPlanner {
   public SqlNode parse(String sqlStatement) throws ParseException {
     throw new UnsupportedOperationException(
         String.format(
-            "%s.parse(String) is not implemented and should need be called",
+            "%s.parse(String) is not implemented and should not need to be called",
             this.getClass().getCanonicalName()));
   }
 
@@ -89,6 +89,7 @@ public class ZetaSQLQueryPlanner implements QueryPlanner {
   public BeamRelNode convertToBeamRel(String sqlStatement, List<QueryParameter> queryParameters, QueryParameter.ParameterMode parameterMode)
       throws ParseException, SqlConversionException {
     try {
+      QueryParameter.validate(queryParameters, parameterMode);
       Map<String, Value> translatedParams = ZetaSQLQueryParameterTranslator.translate(queryParameters, parameterMode);
       return parseQuery(sqlStatement, translatedParams);
     } catch (RelConversionException e) {
