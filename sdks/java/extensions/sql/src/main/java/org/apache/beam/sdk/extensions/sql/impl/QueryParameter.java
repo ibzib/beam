@@ -14,7 +14,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An immutable tuple of name, type, and value. Note that the name may be left empty depending on the {@link ParameterMode} used by the application.
+ * {@link QueryParameter} is an abstraction layer for providing runtime parameters to queries written in different SQL dialects. Before use, parameters must be translated into the native representation of the SQL implementation. The interpretation of some parameter values may vary according to the SQL dialect.
+ *
+ * A parameter is an immutable tuple of name, type, and value. Note that the name may be left empty depending on the {@link ParameterMode} used by the application.
  *
  * Query parameters are statically type checked except for {@link StructParameter}. Structs will be
  * validated at runtime.
@@ -36,6 +38,7 @@ public abstract class QueryParameter<T> {
     POSITIONAL,
   }
 
+  /** Enumeration of the supported parameter types. */
   public enum TypeKind {
     STRING,
     INT64,
@@ -47,6 +50,7 @@ public abstract class QueryParameter<T> {
     STRUCT,
   }
 
+  /** TODO(ibzib) javadoc */
   public static class Type {
     private final TypeKind typeKind;
 
