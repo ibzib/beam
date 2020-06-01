@@ -17,18 +17,32 @@
  */
 package org.apache.beam.sdk.extensions.sql.zetasql;
 
+import static com.google.zetasql.ZetaSQLResolvedNodeKind.ResolvedNodeKind.RESOLVED_CREATE_FUNCTION_STMT;
+import static com.google.zetasql.ZetaSQLResolvedNodeKind.ResolvedNodeKind.RESOLVED_QUERY_STMT;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.google.zetasql.Analyzer;
+import com.google.zetasql.AnalyzerOptions;
+import com.google.zetasql.Function;
 import com.google.zetasql.LanguageOptions;
+import com.google.zetasql.ParseResumeLocation;
+import com.google.zetasql.SimpleCatalog;
+import com.google.zetasql.ZetaSQLFunctions.FunctionEnums.Mode;
+import com.google.zetasql.resolvedast.ResolvedNodes.ResolvedCreateFunctionStmt;
 import com.google.zetasql.resolvedast.ResolvedNodes.ResolvedQueryStmt;
 import com.google.zetasql.resolvedast.ResolvedNodes.ResolvedStatement;
 import java.io.Reader;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 import org.apache.beam.sdk.extensions.sql.impl.QueryPlanner.QueryParameters;
 import org.apache.beam.sdk.extensions.sql.zetasql.translation.ConversionContext;
 import org.apache.beam.sdk.extensions.sql.zetasql.translation.ExpressionConverter;
 import org.apache.beam.sdk.extensions.sql.zetasql.translation.QueryStatementConverter;
+import org.apache.beam.sdk.io.AvroIO.Parse;
+import org.apache.beam.vendor.calcite.v1_20_0.com.google.common.base.Preconditions;
 import org.apache.beam.vendor.calcite.v1_20_0.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.calcite.v1_20_0.com.google.common.collect.ImmutableMap;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.plan.RelOptCluster;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.plan.RelOptPlanner;
@@ -63,9 +77,7 @@ public class ZetaSQLPlannerImpl implements Planner {
   private RelOptPlanner planner;
   private JavaTypeFactory typeFactory;
   private final RexExecutor executor;
-  private RelOptCluster cluster;
   private final ImmutableList<Program> programs;
-  private ExpressionConverter expressionConverter;
 
   private static final long ONE_SECOND_IN_MILLIS = 1000L;
   private static final long ONE_MINUTE_IN_MILLIS = 60L * ONE_SECOND_IN_MILLIS;
@@ -130,30 +142,54 @@ public class ZetaSQLPlannerImpl implements Planner {
   }
 
   public RelRoot rel(String sql, QueryParameters params) {
-    this.cluster = RelOptCluster.create(planner, new RexBuilder(typeFactory));
-    this.expressionConverter = new ExpressionConverter(cluster, params);
+    RelOptCluster cluster = RelOptCluster.create(planner, new RexBuilder(typeFactory));
 
     QueryTrait trait = new QueryTrait();
 
+    SqlAnalyzer analyzer = SqlAnalyzer.getBuilder()
+        .withQueryParams(params)
+        .withQueryTrait(trait)
+        .withCalciteContext(config.getContext())
+        .withTopLevelSchema(defaultSchemaPlus)
+        .withTypeFactory((JavaTypeFactory) cluster.getTypeFactory())
+        .build();
+
     // Set up table providers that need to be pre-registered
-    // TODO(https://issues.apache.org/jira/browse/BEAM-8817): share this logic between dialects
-    List<List<String>> tables = Analyzer.extractTableNamesFromStatement(sql);
+    // List<List<String>> tables = Analyzer.extractTableNamesFromStatement(sql);
+    List<List<String>> tables = ImmutableList.of();
     TableResolution.registerTables(this.defaultSchemaPlus, tables);
 
-    ResolvedStatement statement =
-        SqlAnalyzer.getBuilder()
-            .withQueryParams(params)
-            .withQueryTrait(trait)
-            .withCalciteContext(config.getContext())
-            .withTopLevelSchema(defaultSchemaPlus)
-            .withTypeFactory((JavaTypeFactory) cluster.getTypeFactory())
-            .analyze(sql);
+    AnalyzerOptions options = SqlAnalyzer.initAnalyzerOptions(params);
+    SimpleCatalog catalog = analyzer.createPopulatedCatalog(defaultSchemaPlus.getName(), options, tables);
 
+    ImmutableMap.Builder<String, ResolvedCreateFunctionStmt> udfBuilder = ImmutableMap.builder();
+
+    ResolvedStatement statement;
+    ParseResumeLocation parseResumeLocation = new ParseResumeLocation(sql);
+    do {
+      statement = analyzer.analyzeNextStatement(parseResumeLocation, options, catalog);
+      if (statement.nodeKind() == RESOLVED_CREATE_FUNCTION_STMT) {
+        ResolvedCreateFunctionStmt createFunctionStmt = (ResolvedCreateFunctionStmt) statement;
+        // ResolvedCreateFunctionStmt does not include the full function name, so build it here.
+        String functionFullName = String.format("%s:%s",
+            SqlAnalyzer.USER_DEFINED_FUNCTIONS,
+            String.join(".", createFunctionStmt.getNamePath()));
+        udfBuilder.put(functionFullName, createFunctionStmt);
+      } else if (statement.nodeKind() == RESOLVED_QUERY_STMT) {
+        if (!isEndOfInput(parseResumeLocation)) {
+          throw new UnsupportedOperationException("Statement list must end in a SELECT statement, and cannot contain more than one SELECT statement.");
+        }
+        break;
+      }
+    } while (!isEndOfInput(parseResumeLocation));
+
+    // TODO(ibzib) error on multiple select
     if (!(statement instanceof ResolvedQueryStmt)) {
       throw new UnsupportedOperationException(
-          "Unsupported query statement type: " + sql.getClass().getSimpleName());
+          "Statement list must end in a SELECT statement, not " + statement.getClass().getSimpleName());
     }
 
+    ExpressionConverter expressionConverter = new ExpressionConverter(cluster, params, udfBuilder.build());
     ConversionContext context = ConversionContext.of(config, expressionConverter, cluster, trait);
 
     RelNode convertedNode =
@@ -201,5 +237,10 @@ public class ZetaSQLPlannerImpl implements Planner {
 
   public static LanguageOptions getLanguageOptions() {
     return SqlAnalyzer.initAnalyzerOptions().getLanguageOptions();
+  }
+
+  private static boolean isEndOfInput(ParseResumeLocation parseResumeLocation) {
+    // TODO(ibzib) is utf-8 a safe assumption?
+    return parseResumeLocation.getBytePosition() >= parseResumeLocation.getInput().getBytes(UTF_8).length;
   }
 }
