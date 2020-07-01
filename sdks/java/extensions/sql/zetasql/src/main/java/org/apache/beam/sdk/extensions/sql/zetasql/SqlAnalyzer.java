@@ -132,8 +132,8 @@ public class SqlAnalyzer {
       Function userFunction = new Function(
           createFunctionStmt.getNamePath(),
           USER_DEFINED_FUNCTIONS,
-          // TODO(BEAM-9954) handle UDAF
-          Mode.SCALAR,
+          // TODO(BEAM-9969) handle TVF
+          createFunctionStmt.getIsAggregate() ? Mode.AGGREGATE : Mode.SCALAR,
           com.google.common.collect.ImmutableList.of(createFunctionStmt.getSignature()));
       try {
         catalog.addFunction(userFunction);
@@ -162,7 +162,8 @@ public class SqlAnalyzer {
                     LanguageFeature.FEATURE_DISALLOW_GROUP_BY_FLOAT,
                     LanguageFeature.FEATURE_V_1_2_CIVIL_TIME,
                     LanguageFeature.FEATURE_V_1_1_SELECT_STAR_EXCEPT_REPLACE,
-                    LanguageFeature.FEATURE_TABLE_VALUED_FUNCTIONS)));
+                    LanguageFeature.FEATURE_TABLE_VALUED_FUNCTIONS,
+                    LanguageFeature.FEATURE_CREATE_AGGREGATE_FUNCTION)));
 
     options
         .getLanguageOptions()

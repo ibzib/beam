@@ -48,6 +48,7 @@ import com.google.zetasql.ZetaSQLType.TypeKind;
 import com.google.zetasql.functions.ZetaSQLDateTime.DateTimestampPart;
 import com.google.zetasql.resolvedast.ResolvedColumn;
 import com.google.zetasql.resolvedast.ResolvedNodes;
+import com.google.zetasql.resolvedast.ResolvedNodes.ResolvedAggregateFunctionCall;
 import com.google.zetasql.resolvedast.ResolvedNodes.ResolvedAggregateScan;
 import com.google.zetasql.resolvedast.ResolvedNodes.ResolvedArgument;
 import com.google.zetasql.resolvedast.ResolvedNodes.ResolvedArgumentRef;
@@ -361,6 +362,9 @@ public class ExpressionConverter {
         // TODO: is there a better way to shared code for different cases of
         // convertResolvedFunctionCall than passing nulls?
         ret = convertResolvedFunctionCall((ResolvedFunctionCall) expr, null, null, null);
+        break;
+      case RESOLVED_AGGREGATE_FUNCTION_CALL:
+        ret = convertResolvedAggregateFunctionCall((ResolvedAggregateFunctionCall) expr, null, null, null);
         break;
       case RESOLVED_CAST:
         ret = convertResolvedCast((ResolvedCast) expr, null, null, null);
@@ -957,6 +961,23 @@ public class ExpressionConverter {
     } else {
       return rexBuilder().makeCall(op, operands);
     }
+  }
+
+  private RexNode convertResolvedAggregateFunctionCall(ResolvedAggregateFunctionCall functionCall,
+      List<ResolvedColumn> columnList,
+      List<RelDataTypeField> fieldList,
+      Map<String, RexNode> outerFunctionArguments) {
+    String fullName = functionCall.getFunction().getFullName();
+    ResolvedCreateFunctionStmt createFunctionStmt = userDefinedFunctions.get(fullName);
+    ResolvedExpr functionExpression = createFunctionStmt.getFunctionExpression();
+    ImmutableMap.Builder<String, RexNode> innerFunctionArguments = ImmutableMap.builder();
+    for (int i = 0; i < functionCall.getArgumentList().size(); i++) {
+      String argName = createFunctionStmt.getArgumentNameList().get(i);
+      ResolvedExpr argExpr = functionCall.getArgumentList().get(i);
+      RexNode argNode = convertRexNodeFromResolvedExpr(argExpr, columnList, fieldList, outerFunctionArguments);
+      innerFunctionArguments.put(argName, argNode);
+    }
+    return this.convertRexNodeFromResolvedExpr(functionExpression, columnList, fieldList, innerFunctionArguments.build());
   }
 
   private RexNode convertIntervalToRexIntervalLiteral(ResolvedLiteral resolvedLiteral) {

@@ -20,6 +20,7 @@ package org.apache.beam.sdk.extensions.sql.zetasql.translation;
 import static com.google.zetasql.ZetaSQLResolvedNodeKind.ResolvedNodeKind.RESOLVED_CAST;
 import static com.google.zetasql.ZetaSQLResolvedNodeKind.ResolvedNodeKind.RESOLVED_COLUMN_REF;
 import static com.google.zetasql.ZetaSQLResolvedNodeKind.ResolvedNodeKind.RESOLVED_GET_STRUCT_FIELD;
+import static org.apache.beam.sdk.extensions.sql.zetasql.SqlAnalyzer.USER_DEFINED_FUNCTIONS;
 import static org.apache.beam.sdk.extensions.sql.zetasql.ZetaSqlCalciteTranslationUtils.toSimpleRelDataType;
 
 import com.google.zetasql.FunctionSignature;
@@ -34,6 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.beam.sdk.extensions.sql.zetasql.SqlOperators;
 import org.apache.beam.sdk.extensions.sql.zetasql.SqlStdOperatorMappingTable;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.rel.RelCollations;
 import org.apache.beam.vendor.calcite.v1_20_0.org.apache.calcite.rel.RelNode;
@@ -60,9 +62,16 @@ class AggregateScanConverter extends RelConverter<ResolvedAggregateScan> {
     return Collections.singletonList(zetaNode.getInputScan());
   }
 
+  // private RelNode convertSqlUdaf(ResolvedAggregateScan zetaNode, List<RelNode> inputs) {
+    // getExpressionConverter().convertRexNodeFromResolvedExpr()
+  // }
+
   @Override
   public RelNode convert(ResolvedAggregateScan zetaNode, List<RelNode> inputs) {
+    // return convertSqlUdaf(zetaNode, inputs);
+
     LogicalProject input = convertAggregateScanInputScanToLogicalProject(zetaNode, inputs.get(0));
+    // input.getProjects()
 
     // Calcite LogicalAggregate's GroupSet is indexes of group fields starting from 0.
     int groupFieldsListSize = zetaNode.getGroupByList().size();
@@ -91,6 +100,14 @@ class AggregateScanConverter extends RelConverter<ResolvedAggregateScan> {
         nullable = input.getProjects().get(columnRefoff).getType().isNullable();
       }
       for (ResolvedComputedColumn computedColumn : zetaNode.getAggregateList()) {
+        ResolvedAggregateFunctionCall aggregateFunctionCall =
+            (ResolvedAggregateFunctionCall) computedColumn.getExpr();
+        if (aggregateFunctionCall.getFunction().getGroup().equals(USER_DEFINED_FUNCTIONS)) {
+          RexNode rexNode = convertUserDefinedFunctionCall(aggregateFunctionCall);
+          List<RexNode> projects = ImmutableList.of(rexNode);
+          // return rexNode;
+          // return input;
+        }
         AggregateCall aggCall = convertAggCall(computedColumn, columnRefoff, nullable);
         aggregateCalls.add(aggCall);
         if (!aggCall.getArgList().isEmpty()) {
@@ -118,7 +135,7 @@ class AggregateScanConverter extends RelConverter<ResolvedAggregateScan> {
     // AggregateScan's input is the source of data (e.g. TableScan), which is different from the
     // design of CalciteSQL, in which the LogicalAggregate's input is a LogicalProject, whose input
     // is a LogicalTableScan. When AggregateScan's input is WithRefScan, the WithRefScan is
-    // ebullient to a LogicalTableScan. So it's still required to build another LogicalProject as
+    // equivalent to a LogicalTableScan. So it's still required to build another LogicalProject as
     // the input of LogicalAggregate.
     List<RexNode> projects = new ArrayList<>();
     List<String> fieldNames = new ArrayList<>();
@@ -167,7 +184,28 @@ class AggregateScanConverter extends RelConverter<ResolvedAggregateScan> {
       }
     }
 
+    // for (ResolvedComputedColumn computedColumn : node.getAggregateList()) {
+    //   ResolvedAggregateFunctionCall aggregateFunctionCall =
+    //       (ResolvedAggregateFunctionCall) computedColumn.getExpr();
+    //   if (aggregateFunctionCall.getFunction().getGroup().equals(USER_DEFINED_FUNCTIONS)) {
+    //     // List<RexNode> projects = ImmutableList.of();
+    //     // return LogicalProject.create(input, projects, input.get);
+    //     projects.add(convertUserDefinedFunctionCall(aggregateFunctionCall));
+    //   }
+    // }
+
     return LogicalProject.create(input, projects, fieldNames);
+  }
+
+  private RexNode convertUserDefinedFunctionCall(
+      ResolvedAggregateFunctionCall aggregateFunctionCall) {
+    return
+        getExpressionConverter()
+            .convertRexNodeFromResolvedExpr(
+                aggregateFunctionCall,
+                ImmutableList.of(), // TODO(ibzib) fill me?
+                ImmutableList.of(), // TODO(ibzib) fill me?
+                null); // TODO(ibzib) check
   }
 
   private AggregateCall convertAggCall(
@@ -197,14 +235,23 @@ class AggregateScanConverter extends RelConverter<ResolvedAggregateScan> {
               + " aggregation.");
     }
 
-    SqlAggFunction sqlAggFunction =
-        (SqlAggFunction)
-            SqlStdOperatorMappingTable.ZETASQL_FUNCTION_TO_CALCITE_SQL_OPERATOR.get(
-                aggregateFunctionCall.getFunction().getName());
-    if (sqlAggFunction == null) {
-      throw new UnsupportedOperationException(
-          "Does not support ZetaSQL aggregate function: "
-              + aggregateFunctionCall.getFunction().getName());
+    SqlAggFunction sqlAggFunction;
+    String fnGroup = aggregateFunctionCall.getFunction().getGroup();
+    if (fnGroup.equals("ZetaSQL")) {
+      sqlAggFunction =
+          (SqlAggFunction)
+              SqlStdOperatorMappingTable.ZETASQL_FUNCTION_TO_CALCITE_SQL_OPERATOR.get(
+                  aggregateFunctionCall.getFunction().getName());
+      if (sqlAggFunction == null) {
+        throw new UnsupportedOperationException(
+            "Does not support ZetaSQL aggregate function: "
+                + aggregateFunctionCall.getFunction().getName());
+      }
+    } else if (fnGroup.equals(USER_DEFINED_FUNCTIONS)) {
+      // sqlAggFunction = SqlOperators.createUdafOperator();
+      sqlAggFunction = null;
+    } else {
+      throw new UnsupportedOperationException("Unknown function group " + fnGroup);
     }
 
     List<Integer> argList = new ArrayList<>();

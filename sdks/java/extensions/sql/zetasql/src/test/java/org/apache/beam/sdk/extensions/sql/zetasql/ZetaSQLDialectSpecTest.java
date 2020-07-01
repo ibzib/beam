@@ -58,6 +58,7 @@ import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.logicaltypes.SqlTypes;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Combine.CombineFn;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
@@ -2963,13 +2964,83 @@ public class ZetaSQLDialectSpecTest extends ZetaSQLTestBase {
     zetaSQLQueryPlanner.convertToBeamRel(sql);
   }
 
+  @Test
+  public void testUserDefinedUnaryAggregateFunction() {
+    String sql =
+        "CREATE AGGREGATE FUNCTION double_sum(col FLOAT64)\n"
+            + "AS (2 * SUM(col));\n"
+            + "SELECT double_sum(col1) AS doubled_sum\n"
+            + "FROM (SELECT 1 AS col1 UNION ALL\n"
+            + "      SELECT 3 AS col1 UNION ALL\n"
+            + "      SELECT 5 AS col1\n"
+            + ");";
 
     ZetaSQLQueryPlanner zetaSQLQueryPlanner = new ZetaSQLQueryPlanner(config);
     BeamRelNode beamRelNode = zetaSQLQueryPlanner.convertToBeamRel(sql);
     PCollection<Row> stream = BeamSqlRelUtils.toPCollection(pipeline, beamRelNode);
 
     PAssert.that(stream).containsInAnyOrder(
-        Row.withSchema(Schema.builder().addInt64Field("x").build()).addValue(2L).build());
+        Row.withSchema(Schema.builder().addDoubleField("x").build()).addValue(4.5).build());
+    pipeline.run().waitUntilFinish(Duration.standardMinutes(PIPELINE_EXECUTION_WAITTIME_MINUTES));
+  }
+
+  @Test
+  public void testUserDefinedUnaryAggregateFunctionGroupBy() {
+    String sql =
+        "CREATE AGGREGATE FUNCTION double_sum(col FLOAT64)\n"
+            + "AS (2 * SUM(col));\n"
+            + "SELECT double_sum(col1) AS doubled_sum\n"
+            + "FROM ((SELECT 1 AS col1, 0 as grp) UNION ALL\n"
+            + "      (SELECT 3 AS col1, 0 as grp) UNION ALL\n"
+            + "      (SELECT 5 AS col1, 1 as grp))\n"
+            + "GROUP BY grp;";
+
+    ZetaSQLQueryPlanner zetaSQLQueryPlanner = new ZetaSQLQueryPlanner(config);
+    BeamRelNode beamRelNode = zetaSQLQueryPlanner.convertToBeamRel(sql);
+    PCollection<Row> stream = BeamSqlRelUtils.toPCollection(pipeline, beamRelNode);
+
+    PAssert.that(stream).containsInAnyOrder(
+        Row.withSchema(Schema.builder().addDoubleField("x").addDoubleField("y").build()).addValue(8).addValue(10).build());
+    pipeline.run().waitUntilFinish(Duration.standardMinutes(PIPELINE_EXECUTION_WAITTIME_MINUTES));
+  }
+
+  @Test
+  public void testUserDefinedBinaryAggregateFunctionWithNotAggregateParameter() {
+    String sql =
+        "CREATE AGGREGATE FUNCTION scaled_sum(dividend FLOAT64, divisor FLOAT64 NOT AGGREGATE)\n"
+        + "AS (SUM(dividend) / divisor);\n"
+        + "SELECT scaled_sum(col1, 2) AS scaled_sum\n"
+        + "FROM (SELECT 1 AS col1 UNION ALL\n"
+        + "      SELECT 3 AS col1 UNION ALL\n"
+        + "      SELECT 5 AS col1\n"
+        + ");";
+
+    ZetaSQLQueryPlanner zetaSQLQueryPlanner = new ZetaSQLQueryPlanner(config);
+    BeamRelNode beamRelNode = zetaSQLQueryPlanner.convertToBeamRel(sql);
+    PCollection<Row> stream = BeamSqlRelUtils.toPCollection(pipeline, beamRelNode);
+
+    PAssert.that(stream).containsInAnyOrder(
+        Row.withSchema(Schema.builder().addDoubleField("x").build()).addValue(4.5).build());
+    pipeline.run().waitUntilFinish(Duration.standardMinutes(PIPELINE_EXECUTION_WAITTIME_MINUTES));
+  }
+
+  @Test
+  public void testUserDefinedBinaryAggregateFunction() {
+    String sql =
+        "CREATE AGGREGATE FUNCTION scaled_sum(dividend FLOAT64, divisor FLOAT64)\n"
+            + "AS (SUM(dividend) / COUNT(divisor));\n"
+            + "SELECT scaled_sum(col1, col1) AS scaled_sum, scaled_sum(col1, col1) AS scaled_sum1\n"
+            + "FROM (SELECT 1 AS col1 UNION ALL\n"
+            + "      SELECT 3 AS col1 UNION ALL\n"
+            + "      SELECT 5 AS col1\n"
+            + ");";
+
+    ZetaSQLQueryPlanner zetaSQLQueryPlanner = new ZetaSQLQueryPlanner(config);
+    BeamRelNode beamRelNode = zetaSQLQueryPlanner.convertToBeamRel(sql);
+    PCollection<Row> stream = BeamSqlRelUtils.toPCollection(pipeline, beamRelNode);
+
+    PAssert.that(stream).containsInAnyOrder(
+        Row.withSchema(Schema.builder().addDoubleField("x").build()).addValue(3).build());
     pipeline.run().waitUntilFinish(Duration.standardMinutes(PIPELINE_EXECUTION_WAITTIME_MINUTES));
   }
 
