@@ -33,13 +33,9 @@ from tempfile import mkdtemp
 from past.builtins import unicode
 
 import apache_beam as beam
-from apache_beam import Impulse
-from apache_beam import Map
 from apache_beam import Pipeline
 from apache_beam.coders import VarIntCoder
 from apache_beam.io.external.generate_sequence import GenerateSequence
-from apache_beam.io.kafka import ReadFromKafka
-from apache_beam.io.kafka import WriteToKafka
 from apache_beam.metrics import Metrics
 from apache_beam.options.pipeline_options import DebugOptions
 from apache_beam.options.pipeline_options import FlinkRunnerOptions
@@ -51,7 +47,6 @@ from apache_beam.runners.portability import portable_runner_test
 from apache_beam.testing.util import assert_that
 from apache_beam.testing.util import equal_to
 from apache_beam.transforms import userstate
-from apache_beam.transforms.sql import SqlTransform
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -213,68 +208,6 @@ if __name__ == '__main__':
 
         assert_that(res, equal_to([i for i in range(1, 10)]))
 
-    def test_expand_kafka_read(self):
-      # We expect to fail here because we do not have a Kafka cluster handy.
-      # Nevertheless, we check that the transform is expanded by the
-      # ExpansionService and that the pipeline fails during execution.
-      with self.assertRaises(Exception) as ctx:
-        with self.create_pipeline() as p:
-          # pylint: disable=expression-not-assigned
-          (
-              p
-              | ReadFromKafka(
-                  consumer_config={
-                      'bootstrap.servers': 'notvalid1:7777, notvalid2:3531'
-                  },
-                  topics=['topic1', 'topic2'],
-                  key_deserializer='org.apache.kafka.'
-                  'common.serialization.'
-                  'ByteArrayDeserializer',
-                  value_deserializer='org.apache.kafka.'
-                  'common.serialization.'
-                  'LongDeserializer',
-                  expansion_service=self.get_expansion_service()))
-      self.assertTrue(
-          'No resolvable bootstrap urls given in bootstrap.servers' in str(
-              ctx.exception),
-          'Expected to fail due to invalid bootstrap.servers, but '
-          'failed due to:\n%s' % str(ctx.exception))
-
-    def test_expand_kafka_write(self):
-      # We just test the expansion but do not execute.
-      # pylint: disable=expression-not-assigned
-      (
-          self.create_pipeline()
-          | Impulse()
-          | Map(lambda input: (1, input))
-          | WriteToKafka(
-              producer_config={
-                  'bootstrap.servers': 'localhost:9092, notvalid2:3531'
-              },
-              topic='topic1',
-              key_serializer='org.apache.kafka.'
-              'common.serialization.'
-              'LongSerializer',
-              value_serializer='org.apache.kafka.'
-              'common.serialization.'
-              'ByteArraySerializer',
-              expansion_service=self.get_expansion_service()))
-
-    def test_sql(self):
-      with self.create_pipeline() as p:
-        output = (
-            p
-            | 'Create' >> beam.Create([Row(x, str(x)) for x in range(5)])
-            | 'Sql' >> SqlTransform(
-                """SELECT col1, col2 || '*' || col2 as col2,
-                          power(col1, 2) as col3
-                   FROM PCOLLECTION
-                """,
-                expansion_service=self.get_expansion_service()))
-        assert_that(
-            output,
-            equal_to([(x, '{x}*{x}'.format(x=x), x * x) for x in range(5)]))
-
     def test_flattened_side_input(self):
       # Blocked on support for transcoding
       # https://jira.apache.org/jira/browse/BEAM-6523
@@ -397,15 +330,6 @@ if __name__ == '__main__':
       return options
 
     def test_external_transform(self):
-      raise unittest.SkipTest("BEAM-7252")
-
-    def test_expand_kafka_read(self):
-      raise unittest.SkipTest("BEAM-7252")
-
-    def test_expand_kafka_write(self):
-      raise unittest.SkipTest("BEAM-7252")
-
-    def test_sql(self):
       raise unittest.SkipTest("BEAM-7252")
 
   # Run the tests.
