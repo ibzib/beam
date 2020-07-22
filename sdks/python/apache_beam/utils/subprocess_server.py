@@ -224,7 +224,7 @@ class JavaJarServer(SubprocessServer):
       return local_path
     elif '.dev' in version:
       # TODO: Attempt to use nightly snapshots?
-      raise RuntimeError(
+      raise FileNotFoundError(
           (
               '%s not found. '
               'Please build the server with \n  cd %s; ./gradlew %s') %
