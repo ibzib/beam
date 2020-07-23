@@ -45,21 +45,15 @@ def flinkCompatibilityMatrix = {
   def extra_experiments = []
   if (config.preOptimize)
     extra_experiments.add('pre_optimize=all')
-  tasks.create(name: name) {
-    dependsOn 'setupVirtualenv'
-    dependsOn ':runners:flink:1.10:job-server:shadowJar'
-    dependsOn ':sdks:java:container:docker' // required for test_external_transforms
-    if (workerType.toLowerCase() == 'docker')
-      dependsOn pythonContainerTask
-    else if (workerType.toLowerCase() == 'process')
-      dependsOn 'createProcessWorker'
-    doLast {
-      exec {
-        executable 'sh'
-        args '-c', ". ${envdir}/bin/activate && cd ${pythonRootDir} && pip install -e .[test] && python -m apache_beam.runners.portability.flink_runner_test --flink_job_server_jar=${project(":runners:flink:1.10:job-server:").shadowJar.archivePath} --environment_type=${workerType} ${environment_config} ${streaming ? '--streaming' : ''} ${extra_experiments ? '--extra_experiments=' + extra_experiments.join(',') : ''}"
-      }
-    }
-  }
+  def posargs = "(TODO(ibzib) test file name?) --environment_type=${workerType} ${environment_config} ${streaming ? '--streaming' : ''} ${extra_experiments ? '--extra_experiments=' + extra_experiments.join(',') : ''}"
+  def task = toxTask(name, 'TODO(ibzib) tox task name', posargs)
+  task.dependsOn ':runners:flink:1.10:job-server:shadowJar'
+  task.dependsOn ':sdks:java:container:docker' // required for test_external_transforms
+  if (workerType.toLowerCase() == 'docker')
+    task.dependsOn pythonContainerTask
+  else if (workerType.toLowerCase() == 'process')
+    task.dependsOn 'createProcessWorker'
+  return task
 }
 
 task flinkCompatibilityMatrixDocker() {
