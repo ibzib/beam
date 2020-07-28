@@ -29,9 +29,11 @@ import org.apache.beam.runners.core.construction.Environments;
 import org.apache.beam.runners.core.construction.PipelineTranslation;
 import org.apache.beam.runners.jobsubmission.JobInvocation;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.options.ExperimentalOptions;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.PortablePipelineOptions;
+import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.testing.CrashingRunner;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -83,7 +85,12 @@ public class SparkPortableExecutionTest implements Serializable {
 
   @Test(timeout = 600_000)
   public void testExecution() throws Exception {
-    PipelineOptions options = PipelineOptionsFactory.fromArgs("--experiments=beam_fn_api").create();
+    PipelineOptions options = PipelineOptionsFactory.create();
+    options.as(ExperimentalOptions.class).setExperiments(ImmutableList.of("beam_fn_api"));
+    options.as(StreamingOptions.class).setStreaming(true);
+    options.
+        as(SparkPipelineOptions.class)
+        .setSparkMaster("local[1]");
     options.setRunner(CrashingRunner.class);
     options
         .as(PortablePipelineOptions.class)
