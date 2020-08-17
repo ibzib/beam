@@ -263,6 +263,19 @@ public class ParDoTest implements Serializable {
     }
   }
 
+  static class TestDoFnFewerShenanigans extends DoFn<Integer, String> {
+
+    @ProcessElement
+    public void processElement(ProcessContext c, @Element Integer element) {
+      c.output("processing: " + element);
+    }
+
+    @FinishBundle
+    public void finishBundle(FinishBundleContext c) {
+      c.output("finished", BoundedWindow.TIMESTAMP_MIN_VALUE, GlobalWindow.INSTANCE);
+    }
+  }
+
   static class TestStartBatchErrorDoFn extends DoFn<Integer, String> {
     @StartBundle
     public void startBundle() {
@@ -375,7 +388,7 @@ public class ParDoTest implements Serializable {
       List<Integer> inputs = Arrays.asList(3, -42, 666);
 
       PCollection<String> output =
-          pipeline.apply(Create.of(inputs)).apply(ParDo.of(new TestDoFn()));
+          pipeline.apply(Create.of(inputs)).apply(ParDo.of(new TestDoFnFewerShenanigans()));
 
       PAssert.that(output).satisfies(ParDoTest.HasExpectedOutput.forInput(inputs));
       pipeline.run();
