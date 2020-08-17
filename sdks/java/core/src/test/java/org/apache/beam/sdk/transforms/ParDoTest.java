@@ -256,7 +256,7 @@ public class ParDoTest implements Serializable {
         }
         value += ": " + sideInputValues;
       }
-      c.output(value);
+      c.outputWithTimestamp(value, BoundedWindow.TIMESTAMP_MIN_VALUE);
       for (TupleTag<String> additionalOutputTupleTag : additionalOutputTupleTags) {
         c.output(additionalOutputTupleTag, additionalOutputTupleTag.getId() + ": " + value);
       }
