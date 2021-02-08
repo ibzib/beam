@@ -36,9 +36,9 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 /** Adapter from {@link TableProvider} to {@link Schema}. */
 @SuppressWarnings({"keyfor", "nullness"}) // TODO(https://issues.apache.org/jira/browse/BEAM-10402)
 public class BeamCalciteSchema implements Schema {
-  private JdbcConnection connection;
-  private TableProvider tableProvider;
-  private Map<String, BeamCalciteSchema> subSchemas;
+  private final JdbcConnection connection;
+  private final TableProvider tableProvider;
+  private final Map<String, BeamCalciteSchema> subSchemas;
 
   BeamCalciteSchema(JdbcConnection jdbcConnection, TableProvider tableProvider) {
     this.connection = jdbcConnection;
