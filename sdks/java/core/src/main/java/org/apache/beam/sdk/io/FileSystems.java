@@ -64,6 +64,8 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Multimap
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Ordering;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Sets;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.TreeMultimap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Clients facing {@link FileSystem} utility. */
 @Experimental(Kind.FILESYSTEM)
@@ -72,6 +74,7 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.TreeMult
   "rawtypes"
 })
 public class FileSystems {
+  private static final Logger LOG = LoggerFactory.getLogger(FileSystems.class);
 
   public static final String DEFAULT_SCHEME = "file";
   private static final Pattern FILE_SCHEME_PATTERN =
@@ -518,6 +521,9 @@ public class FileSystems {
             ServiceLoader.load(FileSystemRegistrar.class, ReflectHelpers.findClassLoader())));
 
     SCHEME_TO_FILESYSTEM.set(verifySchemesAreUnique(options, registrars));
+    for (String fs : SCHEME_TO_FILESYSTEM.get().keySet()) {
+      LOG.info("Filesystem {}", fs);
+    }
   }
 
   @VisibleForTesting
